@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
@@ -42,10 +42,10 @@ export function SplashScreen({ navigation }: Props) {
       withTiming(1, { duration: 200 })
     );
     logoOpacity.value = withTiming(1, { duration: 600 });
-    
+
     // Text animation
     textOpacity.value = withDelay(400, withTiming(1, { duration: 400 }));
-    
+
     // Navigate after animation
     const timer = setTimeout(() => {
       runOnJS(navigateToLogin)();
@@ -72,10 +72,13 @@ export function SplashScreen({ navigation }: Props) {
     >
       <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
         <View style={styles.iconCircle}>
-          <Ionicons name="medical" size={48} color={theme.colors.palette.primary[500]} />
-        </View>
+          <Image
+            source={require('../../../assets/icon.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />        </View>
       </Animated.View>
-      
+
       <Animated.View style={textAnimatedStyle}>
         <Text style={[styles.title, { fontFamily: theme.fontFamily.bold }]}>
           Jiggy Care
@@ -120,5 +123,9 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
     marginTop: 4,
+  },
+  logoImage: {
+    width: 64,
+    height: 64,
   },
 });

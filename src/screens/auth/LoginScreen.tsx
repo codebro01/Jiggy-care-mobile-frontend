@@ -3,6 +3,8 @@
  * Premium login with email/password and Google Sign-In
  */
 
+
+
 import React, { useState } from 'react';
 import {
   View,
@@ -14,16 +16,20 @@ import {
   Pressable,
   Image,
 } from 'react-native';
+import { useAlert, Alert } from '@/components/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
 import { useAppTheme } from '../../theme';
 import { useAuthStore } from '../../stores';
 import { Button, Input } from '../../components';
+import { authService } from '../../services/auth.service';
+
+
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+
 
 interface Props {
   navigation: LoginScreenNavigationProp;
@@ -31,16 +37,20 @@ interface Props {
 
 export function LoginScreen({ navigation }: Props) {
   const theme = useAppTheme();
-  const { login, googleSignIn, isLoading, error } = useAuthStore();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [loading, setLoading] = useState(false);
+const [error, setError] = useState('');
+  const { alert, showSuccess, showError, showWarning, hideAlert } = useAlert();
+const {setUser} = useAuthStore()
+
 
   const validateForm = (): boolean => {
     let isValid = true;
-    
+
     if (!email) {
       setEmailError('Email is required');
       isValid = false;
@@ -50,7 +60,7 @@ export function LoginScreen({ navigation }: Props) {
     } else {
       setEmailError('');
     }
-    
+
     if (!password) {
       setPasswordError('Password is required');
       isValid = false;
@@ -60,23 +70,44 @@ export function LoginScreen({ navigation }: Props) {
     } else {
       setPasswordError('');
     }
-    
+
     return isValid;
   };
 
   const handleLogin = async () => {
-    if (validateForm()) {
-      try {
-        await login(email, password);
-      } catch (e) {
-        // Error is handled by the store
-      }
+    try {
+      setLoading(true);
+
+      const response = await authService.login(email, password);
+
+      showSuccess('Login successful', 'Success');
+      console.log('Login successful:', response);
+
+      // Update global state which triggers navigation to Main
+      // We fill in missing fields with placeholders + current date
+
+      
+      setUser({
+        id: response.data.id,
+        email: response.data.email,
+        role: response.data.role,
+        firstName: response.data.firstName,
+        lastName: response.data.lastName,
+        createdAt: response.data.createdAt, 
+        updatedAt: response.data.updatedAt,
+      });
+      
+    } catch (error: any) {
+      showError(`Error: ${error.message}`, 'Error')
+      console.log(error)
+      setLoading(false)
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
     try {
-      await googleSignIn();
     } catch (e) {
       // Error is handled by the store
     }
@@ -95,15 +126,13 @@ export function LoginScreen({ navigation }: Props) {
         >
           {/* Header */}
           <View style={styles.header}>
-            <LinearGradient
-              colors={[theme.colors.palette.primary[500], theme.colors.palette.primary[400]]}
-              style={styles.logoContainer}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="medical" size={32} color="#FFFFFF" />
-            </LinearGradient>
-            
+
+            <Image
+              source={require('../../../assets/icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+
             <Text style={[styles.title, { color: theme.colors.text.primary, fontFamily: theme.fontFamily.bold }]}>
               Welcome Back
             </Text>
@@ -154,7 +183,7 @@ export function LoginScreen({ navigation }: Props) {
             <Button
               title="Sign In"
               onPress={handleLogin}
-              loading={isLoading}
+              loading={loading}
               fullWidth
               style={styles.loginButton}
             />
@@ -191,6 +220,13 @@ export function LoginScreen({ navigation }: Props) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+           <Alert
+              type={alert.type}
+              message={alert.message}
+              title={alert.title}
+              visible={alert.visible}
+              onClose={hideAlert}
+            />
     </SafeAreaView>
   );
 }
@@ -291,5 +327,10 @@ const styles = StyleSheet.create({
   signupLink: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  logoImage: {
+    width: 80,
+    height: 80,
+    marginBottom: 30,
   },
 });

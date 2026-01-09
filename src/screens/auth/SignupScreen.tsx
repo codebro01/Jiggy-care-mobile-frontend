@@ -19,6 +19,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
 import { useAppTheme } from '../../theme';
 import { Button, Input } from '../../components';
+import { authService } from '@/services/auth.service';
+import { Alert, useAlert } from '@/components/alert';
 
 type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Signup'>;
 
@@ -29,20 +31,29 @@ interface Props {
 export function SignupScreen({ navigation }: Props) {
   const theme = useAppTheme();
   
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const {showError, showSuccess, alert, hideAlert} = useAlert()
+
   const handleSignup = async () => {
-    setIsLoading(true);
-    // TODO: Implement signup
-    setTimeout(() => {
-      setIsLoading(false);
-      navigation.replace('Login');
-    }, 1500);
+  try {
+      setIsLoading(true);
+  
+  
+      const response = await authService.signup(fullName, email, password);
+      setIsLoading(false)
+      console.log('Signup successful:', response);
+  } catch (error: any) {
+    showError(`Error: ${error.message}`, 'Error')
+    console.log(error)
+    setIsLoading(false)
+
+  }
+
   };
 
   return (
@@ -76,21 +87,13 @@ export function SignupScreen({ navigation }: Props) {
           {/* Form */}
           <View style={styles.form}>
             <View style={styles.nameRow}>
+              
               <View style={styles.nameInput}>
                 <Input
-                  label="First Name"
-                  placeholder="John"
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  containerStyle={{ marginBottom: 0 }}
-                />
-              </View>
-              <View style={styles.nameInput}>
-                <Input
-                  label="Last Name"
-                  placeholder="Smith"
-                  value={lastName}
-                  onChangeText={setLastName}
+                  label="Full Name"
+                  placeholder="John Doe"
+                  value={fullName}
+                  onChangeText={setFullName}
                   containerStyle={{ marginBottom: 0 }}
                 />
               </View>
@@ -154,6 +157,14 @@ export function SignupScreen({ navigation }: Props) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Alert
+        type={alert.type}
+        message={alert.message}
+        title={alert.title}
+        visible={alert.visible}
+        onClose={hideAlert}
+      />
     </SafeAreaView>
   );
 }
