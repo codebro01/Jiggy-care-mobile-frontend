@@ -6,9 +6,10 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, AuthTokens } from '../types';
+import { User, AuthTokens, UserSignupData } from '../types';
 
 interface AuthState {
+    userSignupData?: UserSignupData | null;
     user: User | null;
     tokens: AuthTokens | null;
     isAuthenticated: boolean;
@@ -16,6 +17,7 @@ interface AuthState {
     error: string | null;
 
     // Actions
+    setUserSignupData: (userSignupData: UserSignupData ) => void;
     setUser: (user: User) => void;
     setTokens: (tokens: AuthTokens) => void;
     login: (email: string, password: string) => Promise<void>;
@@ -33,7 +35,7 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
             isLoading: false,
             error: null,
-
+            setUserSignupData: (userSignupData) => set({ userSignupData }),
             setUser: (user) => set({ user, isAuthenticated: true }),
 
             setTokens: (tokens) => set({ tokens }),

@@ -33,13 +33,42 @@ export const authService = {
         await tokenManager.clearTokens();
     },
 
-    signup: async (fullName:string, email: string, password: string, role: string = 'consultant') => {
+    signup: async (fullName:string, email: string, password: string, otp: string, role: string = 'consultant') => {
         try {
             const response = await api.post<any>('/users/signup', {
                 fullName, 
                 email,
                 password,
                 role,
+                otp
+            });
+
+            // Tokens are automatically saved in the response interceptor
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    sendOtp: async (fullName: string, email: string) => {
+        try {
+            const response = await api.post<any>('/email-verification/send-otp', {
+                fullName,
+                email,
+            });
+
+            // Tokens are automatically saved in the response interceptor
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }, 
+
+    googleLogin: async (idToken: string, role: string = 'consultant') => {
+        try {
+            const response = await api.post<any>('/auth/google/mobile-signin', {
+                idToken,
+                role
             });
 
             // Tokens are automatically saved in the response interceptor

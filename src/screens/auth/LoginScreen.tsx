@@ -25,6 +25,7 @@ import { useAppTheme } from '../../theme';
 import { useAuthStore } from '../../stores';
 import { Button, Input } from '../../components';
 import { authService } from '../../services/auth.service';
+import { useGoogleAuth } from './UseGoogleAuth';
 
 
 
@@ -46,6 +47,7 @@ export function LoginScreen({ navigation }: Props) {
 const [error, setError] = useState('');
   const { alert, showSuccess, showError, showWarning, hideAlert } = useAlert();
 const {setUser} = useAuthStore()
+const { promptAsync, response } = useGoogleAuth();
 
 
   const validateForm = (): boolean => {
@@ -108,7 +110,20 @@ const {setUser} = useAuthStore()
 
   const handleGoogleSignIn = async () => {
     try {
+
+      const result = await promptAsync();
+
+      if (result.type !== 'success') return;
+
+      const idToken = result.authentication?.idToken;
+      if (!idToken) throw new Error('No ID token');
+
+      // send token to backend
+      const googleLoginResp = await authService.googleLogin(idToken);
+
+      console.log(googleLoginResp)
     } catch (e) {
+      console.log(e)
       // Error is handled by the store
     }
   };

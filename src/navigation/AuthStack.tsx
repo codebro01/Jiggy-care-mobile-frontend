@@ -11,6 +11,7 @@ import { useAppTheme } from '../theme';
 import { SplashScreen } from '../screens/auth/SplashScreen';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignupScreen } from '../screens/auth/SignupScreen';
+import { OTPVerificationScreen } from '@/screens/auth/OtpScreen';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
@@ -37,6 +38,11 @@ export function AuthStack() {
       <Stack.Screen 
         name="Signup" 
         component={SignupScreen}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen 
+        name="OTPVerification" 
+        component={OTPVerificationScreen}
         options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>

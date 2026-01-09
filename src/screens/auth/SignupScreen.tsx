@@ -21,6 +21,7 @@ import { useAppTheme } from '../../theme';
 import { Button, Input } from '../../components';
 import { authService } from '@/services/auth.service';
 import { Alert, useAlert } from '@/components/alert';
+import { useAuthStore } from '@/stores/authStore';
 
 type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Signup'>;
 
@@ -38,13 +39,49 @@ export function SignupScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
 
   const {showError, showSuccess, alert, hideAlert} = useAlert()
+const setUserSignupData = useAuthStore((state) => state.setUserSignupData)
+
+   const handleSendOtp = async () => {
+
+   try {
+     setIsLoading(true);
+
+     const response = await authService.sendOtp(fullName, email);
+     setIsLoading(false);
+
+     setUserSignupData({
+       fullName,
+       email,
+       password,
+     })
+
+     navigation.navigate('OTPVerification', { fullName, email });
+
+     console.log(response)
+   } catch (error: any) {
+     setIsLoading(false);
+
+    console.log(error)
+     showError(`Error: ${error.message || error}`, 'Error')
+
+   }
+
+
+  }
 
   const handleSignup = async () => {
   try {
       setIsLoading(true);
   
-  
-      const response = await authService.signup(fullName, email, password);
+     const response = await authService.sendOtp(fullName, email)
+
+     setUserSignupData({
+      fullName,
+      email,
+      password,
+     })
+
+     navigation.navigate('OTPVerification', { fullName, email });
       setIsLoading(false)
       console.log('Signup successful:', response);
   } catch (error: any) {
@@ -130,7 +167,7 @@ export function SignupScreen({ navigation }: Props) {
 
             <Button
               title="Create Account"
-              onPress={handleSignup}
+              onPress={handleSendOtp}
               loading={isLoading}
               fullWidth
               style={styles.signupButton}

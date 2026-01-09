@@ -18,6 +18,11 @@ export interface User {
     createdAt: string;
     updatedAt: string;
 }
+export interface UserSignupData {
+    email: string;
+   password: string;
+    fullName: string;
+   }
 
 // Authentication Types
 export interface AuthTokens {

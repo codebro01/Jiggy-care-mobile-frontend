@@ -10,6 +10,7 @@ export type AuthStackParamList = {
     Login: undefined;
     Signup: undefined;
     ForgotPassword: undefined;
+    OTPVerification: { email: string; fullName: string };
 };
 
 // Home Stack
