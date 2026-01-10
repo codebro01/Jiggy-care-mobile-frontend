@@ -49,17 +49,24 @@ export const useAuthStore = create<AuthState>()(
 
                     // Mock successful login
                     const mockUser: User = {
-                        id: '1',
-                        email,
-                        firstName: 'Dr. John',
-                        lastName: 'Smith',
+                        id: '904b883f-f802-431b-aade-bed855593705',
+                        email: 'samsondamilola.99@gmail.com',
+                        fullName: 'Chicken',
+                        avatar: null,
                         role: 'consultant',
-                        specialization: 'General Practitioner',
-                        rating: 4.8,
-                        experience: 10,
-                        languages: ['English', 'Spanish'],
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString(),
+                        phone: null,
+                        emailVerified: true,
+                        dateJoined: '2026-01-09T12:09:49.238Z',
+                        address: 'Lagos, Nigeria',
+                        dateOfBirth: null,
+                        gender: null,
+                        about: null,
+                        availability: false,
+                        certification: null,
+                        speciality: null,
+                        workingHours: null,
+                        yrsOfExperience: null,
+                        languages: null,
                     };
 
                     const mockTokens: AuthTokens = {
@@ -90,17 +97,24 @@ export const useAuthStore = create<AuthState>()(
                     await new Promise(resolve => setTimeout(resolve, 1000));
 
                     const mockUser: User = {
-                        id: '2',
-                        email: 'doctor@example.com',
-                        firstName: 'Dr. Sarah',
-                        lastName: 'Johnson',
+                        id: '904b883f-f802-431b-aade-bed855593705',
+                        email: 'samsondamilola.99@gmail.com',
+                        fullName: 'Chicken',
+                        avatar: null,
                         role: 'consultant',
-                        specialization: 'Cardiologist',
-                        rating: 4.9,
-                        experience: 15,
-                        languages: ['English'],
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString(),
+                        phone: null,
+                        emailVerified: true,
+                        dateJoined: '2026-01-09T12:09:49.238Z',
+                        address: 'Lagos, Nigeria',
+                        dateOfBirth: null,
+                        gender: null,
+                        about: null,
+                        availability: false,
+                        certification: null,
+                        speciality: null,
+                        workingHours: null,
+                        yrsOfExperience: null,
+                        languages: null,
                     };
 
                     const mockTokens: AuthTokens = {

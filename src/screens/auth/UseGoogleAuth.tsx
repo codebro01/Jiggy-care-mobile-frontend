@@ -1,15 +1,30 @@
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { Platform } from 'react-native';
-
-WebBrowser.maybeCompleteAuthSession();
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { useEffect } from 'react';
 
 export const useGoogleAuth = () => {
-    const [request, response, promptAsync] = Google.useAuthRequest({
-        // webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-        // iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    });
+    useEffect(() => {
+        GoogleSignin.configure({
+            webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+            // offlineAccess: true,
+            // forceCodeForRefreshToken: true,
+        });
+    }, []);
 
-    return { request, response, promptAsync };
+    const signIn = async () => {
+        try {
+            await GoogleSignin.signOut();
+
+            await GoogleSignin.hasPlayServices();
+            const response = await GoogleSignin.signIn();
+
+            if(response.data){
+                return response.data.idToken;
+            }
+        } catch (error) {
+            console.error('Google Sign-In Error:', error);
+            throw error;
+        }
+    };
+
+    return { signIn };
 };

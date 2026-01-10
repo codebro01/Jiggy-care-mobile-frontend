@@ -9,6 +9,7 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,20 +31,41 @@ interface Props {
 export function EditProfileScreen({ navigation }: Props) {
   const theme = useAppTheme();
   const user = useAuthStore((state) => state.user);
-  
-  const [firstName, setFirstName] = useState(user?.firstName || '');
-  const [lastName, setLastName] = useState(user?.lastName || '');
+
+  // Basic Information
+  const [fullName, setFullName] = useState(user?.fullName || '');
   const [email, setEmail] = useState(user?.email || '');
-  const [specialization, setSpecialization] = useState(user?.specialization || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [address, setAddress] = useState(user?.address || '');
+  const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth || '');
+  const [gender, setGender] = useState(user?.gender || '');
+
+  // Professional Information (Consultant)
+  const [about, setAbout] = useState(user?.about || '');
+  const [speciality, setSpeciality] = useState(user?.speciality || '');
+  const [certification, setCertification] = useState(user?.certification || '');
+  const [yrsOfExperience, setYrsOfExperience] = useState(user?.yrsOfExperience?.toString() || '');
+  const [workingHours, setWorkingHours] = useState(user?.workingHours || '');
+
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSave = async () => {
-    setIsLoading(true);
-    // TODO: Implement profile update
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      setIsLoading(true);
+
+      // TODO: Call your backend API to update profile
+      // await profileService.updateProfile({...formData});
+
+      // Update local auth store
+      // updateUser({...updatedData});
+
+      Alert.alert('Success', 'Profile updated successfully');
       navigation.goBack();
-    }, 1000);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -78,7 +100,7 @@ export function EditProfileScreen({ navigation }: Props) {
         {/* Avatar */}
         <View style={styles.avatarSection}>
           <Avatar
-            name={`${firstName} ${lastName}`}
+            name={fullName}
             source={user?.avatar}
             size="2xl"
           />
@@ -89,28 +111,24 @@ export function EditProfileScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
-        {/* Form */}
+        {/* Basic Information Section */}
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.semiBold },
+          ]}
+        >
+          BASIC INFORMATION
+        </Text>
+
         <View style={styles.form}>
-          <View style={styles.nameRow}>
-            <View style={styles.nameInput}>
-              <Input
-                label="First Name"
-                placeholder="Enter first name"
-                value={firstName}
-                onChangeText={setFirstName}
-                containerStyle={{ marginBottom: 0 }}
-              />
-            </View>
-            <View style={styles.nameInput}>
-              <Input
-                label="Last Name"
-                placeholder="Enter last name"
-                value={lastName}
-                onChangeText={setLastName}
-                containerStyle={{ marginBottom: 0 }}
-              />
-            </View>
-          </View>
+          <Input
+            label="Full Name"
+            placeholder="Enter your full name"
+            value={fullName}
+            onChangeText={setFullName}
+            leftIcon="person-outline"
+          />
 
           <Input
             label="Email"
@@ -120,16 +138,101 @@ export function EditProfileScreen({ navigation }: Props) {
             keyboardType="email-address"
             autoCapitalize="none"
             leftIcon="mail-outline"
+            editable={false}
           />
 
           <Input
-            label="Specialization"
-            placeholder="e.g., General Practitioner"
-            value={specialization}
-            onChangeText={setSpecialization}
-            leftIcon="medical-outline"
+            label="Phone"
+            placeholder="Enter phone number"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            leftIcon="call-outline"
+          />
+
+          <Input
+            label="Address"
+            placeholder="Enter your address"
+            value={address}
+            onChangeText={setAddress}
+            leftIcon="location-outline"
+          />
+
+          <Input
+            label="Date of Birth"
+            placeholder="YYYY-MM-DD"
+            value={dateOfBirth}
+            onChangeText={setDateOfBirth}
+            leftIcon="calendar-outline"
+          />
+
+          <Input
+            label="Gender"
+            placeholder="Male/Female/Other"
+            value={gender}
+            onChangeText={setGender}
+            leftIcon="male-female-outline"
           />
         </View>
+
+        {/* Professional Information Section - Only for Consultants */}
+        {user?.role === 'consultant' && (
+          <>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.semiBold },
+              ]}
+            >
+              PROFESSIONAL INFORMATION
+            </Text>
+
+            <View style={styles.form}>
+              <Input
+                label="About"
+                placeholder="Brief description about yourself"
+                value={about}
+                onChangeText={setAbout}
+                multiline
+                numberOfLines={4}
+                leftIcon="information-circle-outline"
+              />
+
+              <Input
+                label="Specialization"
+                placeholder="e.g., Cardiology, Pediatrics"
+                value={speciality}
+                onChangeText={setSpeciality}
+                leftIcon="medical-outline"
+              />
+
+              <Input
+                label="Certification"
+                placeholder="Your certifications"
+                value={certification}
+                onChangeText={setCertification}
+                leftIcon="school-outline"
+              />
+
+              <Input
+                label="Years of Experience"
+                placeholder="Enter years"
+                value={yrsOfExperience}
+                onChangeText={setYrsOfExperience}
+                keyboardType="numeric"
+                leftIcon="time-outline"
+              />
+
+              <Input
+                label="Working Hours"
+                placeholder="e.g., Mon-Fri 9AM-5PM"
+                value={workingHours}
+                onChangeText={setWorkingHours}
+                leftIcon="briefcase-outline"
+              />
+            </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Bottom Action */}
@@ -171,7 +274,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   avatarSection: {
     alignItems: 'center',
@@ -188,16 +291,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  form: {
+  sectionTitle: {
+    fontSize: 12,
     marginTop: 8,
+    marginBottom: 12,
+    marginLeft: 4,
   },
-  nameRow: {
-    flexDirection: 'row',
-    gap: 12,
+  form: {
     marginBottom: 16,
-  },
-  nameInput: {
-    flex: 1,
   },
   bottomAction: {
     position: 'absolute',

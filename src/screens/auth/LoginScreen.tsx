@@ -47,7 +47,7 @@ export function LoginScreen({ navigation }: Props) {
 const [error, setError] = useState('');
   const { alert, showSuccess, showError, showWarning, hideAlert } = useAlert();
 const {setUser} = useAuthStore()
-const { promptAsync, response } = useGoogleAuth();
+const { signIn } = useGoogleAuth();
 
 
   const validateForm = (): boolean => {
@@ -92,15 +92,26 @@ const { promptAsync, response } = useGoogleAuth();
       setUser({
         id: response.data.id,
         email: response.data.email,
+        fullName: response.data.fullName,
+        avatar: response.data.dp,
         role: response.data.role,
-        firstName: response.data.firstName,
-        lastName: response.data.lastName,
-        createdAt: response.data.createdAt, 
-        updatedAt: response.data.updatedAt,
+        phone: response.data.phone,
+        emailVerified: response.data.emailVerified,
+        dateJoined: response.data.dateJoined,
+        address: response.data.address,
+        dateOfBirth: response.data.dateOfBirth,
+        gender: response.data.gender,
+        about: response.data.about,
+        availability: response.data.availability,
+        certification: response.data.certification,
+        speciality: response.data.speciality,
+        workingHours: response.data.workingHours,
+        yrsOfExperience: response.data.yrsOfExperience,
+        languages: response.data.languages,
       });
       
     } catch (error: any) {
-      showError(`Error: ${error.message}`, 'Error')
+      showError(`Error: ${error.message || error}`, 'Error')
       console.log(error)
       setLoading(false)
     } finally {
@@ -110,22 +121,37 @@ const { promptAsync, response } = useGoogleAuth();
 
   const handleGoogleSignIn = async () => {
     try {
+      const idToken = await signIn(); // from useGoogleAuth
 
-      const result = await promptAsync();
-
-      if (result.type !== 'success') return;
-
-      const idToken = result.authentication?.idToken;
       if (!idToken) throw new Error('No ID token');
 
-      // send token to backend
-      const googleLoginResp = await authService.googleLogin(idToken);
-
-      console.log(googleLoginResp)
-    } catch (e) {
-      console.log(e)
-      // Error is handled by the store
-    }
+      // Send token to backend
+      const response = await authService.googleLogin(idToken);
+      setUser({
+        id: response.data.id,
+        email: response.data.email,
+        fullName: response.data.fullName,
+        avatar: response.data.dp,
+        role: response.data.role,
+        phone: response.data.phone,
+        emailVerified: response.data.emailVerified,
+        dateJoined: response.data.dateJoined,
+        address: response.data.address,
+        dateOfBirth: response.data.dateOfBirth,
+        gender: response.data.gender,
+        about: response.data.about,
+        availability: response.data.availability,
+        certification: response.data.certification,
+        speciality: response.data.speciality,
+        workingHours: response.data.workingHours,
+        yrsOfExperience: response.data.yrsOfExperience,
+        languages: response.data.languages,
+      });
+      console.log(response);
+    } catch (error: any) {
+      showError(`Error: ${error.message || error}`, 'Error')
+      console.log(error)
+      setLoading(false)    }
   };
 
   return (

@@ -66,10 +66,7 @@ export const authService = {
 
     googleLogin: async (idToken: string, role: string = 'consultant') => {
         try {
-            const response = await api.post<any>('/auth/google/mobile-signin', {
-                idToken,
-                role
-            });
+            const response = await api.get<any>(`/auth/google/mobile-signin?idToken=${idToken}&role=${role}`);
 
             // Tokens are automatically saved in the response interceptor
             return response;

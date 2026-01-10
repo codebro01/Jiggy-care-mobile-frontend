@@ -1,6 +1,6 @@
 /**
  * Jiggy Care Mobile - Profile Screen
- * User profile and settings
+ * User profile overview with settings
  */
 
 import React from 'react';
@@ -144,7 +144,7 @@ export function ProfileScreen({ navigation }: Props) {
         <Card variant="elevated" style={styles.profileCard}>
           <View style={styles.profileHeader}>
             <Avatar
-              name={`${user?.firstName} ${user?.lastName}`}
+              name={user?.fullName || 'User'}
               source={user?.avatar}
               size="xl"
             />
@@ -155,7 +155,7 @@ export function ProfileScreen({ navigation }: Props) {
                   { color: theme.colors.text.primary, fontFamily: theme.fontFamily.bold },
                 ]}
               >
-                Dr. {user?.firstName} {user?.lastName}
+                {user?.role === 'consultant' && 'Dr. '}{user?.fullName}
               </Text>
               <Text
                 style={[
@@ -165,7 +165,7 @@ export function ProfileScreen({ navigation }: Props) {
               >
                 {user?.email}
               </Text>
-              {user?.specialization && (
+              {user?.speciality && (
                 <View style={[styles.specializationBadge, { backgroundColor: theme.colors.palette.primary[50] }]}>
                   <Text
                     style={[
@@ -173,7 +173,7 @@ export function ProfileScreen({ navigation }: Props) {
                       { color: theme.colors.accent },
                     ]}
                   >
-                    {user.specialization}
+                    {user.speciality}
                   </Text>
                 </View>
               )}
@@ -191,7 +191,140 @@ export function ProfileScreen({ navigation }: Props) {
           </Pressable>
         </Card>
 
-        {/* Settings Sections */}
+        {/* Personal Information */}
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.semiBold },
+          ]}
+        >
+          PERSONAL INFORMATION
+        </Text>
+        <Card variant="outlined" style={styles.settingsCard}>
+          <SettingItem
+            icon="call-outline"
+            label="Phone"
+            value={user?.phone || 'Not set'}
+            hasChevron={false}
+          />
+          <SettingItem
+            icon="location-outline"
+            label="Address"
+            value={user?.address || 'Not set'}
+            hasChevron={false}
+          />
+          <SettingItem
+            icon="calendar-outline"
+            label="Date of Birth"
+            value={user?.dateOfBirth || 'Not set'}
+            hasChevron={false}
+          />
+          <SettingItem
+            icon="male-female-outline"
+            label="Gender"
+            value={user?.gender || 'Not set'}
+            hasChevron={false}
+          />
+        </Card>
+
+        {/* Professional Information - Only for consultants */}
+        {user?.role === 'consultant' && (
+          <>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.semiBold },
+              ]}
+            >
+              PROFESSIONAL INFORMATION
+            </Text>
+            <Card variant="outlined" style={styles.settingsCard}>
+              {user?.about && (
+                <View style={styles.aboutSection}>
+                  <View style={styles.settingIconContainer}>
+                    <Ionicons name="briefcase-outline" size={20} color={theme.colors.accent} />
+                  </View>
+
+                  <View style={styles.settingContent}>
+                    <Text
+                      style={[
+                        styles.aboutLabel,
+                        { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.medium },
+                      ]}
+                    >
+                      About
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.aboutText,
+                        { color: theme.colors.text.primary, fontFamily: theme.fontFamily.regular },
+                      ]}
+                    >
+                      {user.about}
+                    </Text>
+                  </View>
+                  
+                 
+                </View>
+              )}
+              <SettingItem
+                icon="school-outline"
+                label="Certification"
+                value={user?.certification || 'Not set'}
+                hasChevron={false}
+              />
+              <SettingItem
+                icon="time-outline"
+                label="Years of Experience"
+                value={user?.yrsOfExperience ? `${user.yrsOfExperience} years` : 'Not set'}
+                hasChevron={false}
+              />
+              <View style={styles.workingHoursSection}>
+                <View style={styles.settingIconContainer}>
+                  <Ionicons name="briefcase-outline" size={20} color={theme.colors.accent} />
+                </View>
+                <View style={styles.workingHoursContent}>
+                  <Text
+                    style={[
+                      styles.settingLabel,
+                      { color: theme.colors.text.primary, fontFamily: theme.fontFamily.medium },
+                    ]}
+                  >
+                    Working Hours
+                  </Text>
+                  {user?.workingHours && typeof user.workingHours === 'object' ? (
+                    <View style={styles.workingHoursList}>
+                      {Object.entries(user.workingHours).map(([day, hours]) => (
+                        <Text
+                          key={day}
+                          style={[
+                            styles.workingHoursItem,
+                            { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.regular },
+                          ]}
+                        >
+                          {day.charAt(0).toUpperCase() + day.slice(1)}: {'hours'}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={[styles.settingValue, { color: theme.colors.text.tertiary }]}>
+                      Not set
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <SettingItem
+                icon={user?.availability ? "checkmark-circle" : "close-circle"}
+                label="Availability"
+                value={user?.availability ? 'Available' : 'Not Available'}
+                hasChevron={false}
+              />
+            </Card>
+          </>
+        )}
+
+        {/* Account Information */}
         <Text
           style={[
             styles.sectionTitle,
@@ -201,11 +334,21 @@ export function ProfileScreen({ navigation }: Props) {
           ACCOUNT
         </Text>
         <Card variant="outlined" style={styles.settingsCard}>
-          <SettingItem icon="person-outline" label="Personal Information" />
-          <SettingItem icon="notifications-outline" label="Notifications" />
-          <SettingItem icon="shield-checkmark-outline" label="Privacy & Security" />
+          <SettingItem
+            icon={user?.emailVerified ? "shield-checkmark" : "shield-outline"}
+            label="Email Verification"
+            value={user?.emailVerified ? 'Verified' : 'Not Verified'}
+            hasChevron={false}
+          />
+          <SettingItem
+            icon="calendar-outline"
+            label="Member Since"
+            value={user?.dateJoined ? new Date(user.dateJoined).toLocaleDateString() : 'N/A'}
+            hasChevron={false}
+          />
         </Card>
 
+        {/* Settings Sections */}
         <Text
           style={[
             styles.sectionTitle,
@@ -342,5 +485,40 @@ const styles = StyleSheet.create({
   },
   logoutCard: {
     borderWidth: 0,
+  },
+  aboutSection: {
+    marginBottom: 16,
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  aboutLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  aboutText: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  workingHoursSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  workingHoursContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  workingHoursItem: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  workingHoursList: {
+    marginTop: 8,
   },
 });

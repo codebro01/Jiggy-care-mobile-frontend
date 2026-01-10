@@ -6,17 +6,26 @@
 export interface User {
     id: string;
     email: string;
-    firstName: string;
-    lastName: string;
-    avatar?: string;
+    fullName: string;
+    avatar?: string | null; // Maps to 'dp'
     role: 'consultant' | 'patient';
-    phone?: string;
-    specialization?: string; // For consultants
-    rating?: number; // For consultants
-    experience?: number; // Years of experience for consultants
-    languages?: string[];
-    createdAt: string;
-    updatedAt: string;
+    phone?: string | null;
+    emailVerified: boolean;
+    dateJoined: string;
+
+    // Common fields
+    address?: string | null;
+    dateOfBirth?: string | null;
+    gender?: string | null;
+
+    // Consultant-specific fields
+    about?: string | null;
+    availability?: boolean;
+    certification?: string | null;
+    speciality?: string | null; // Note: backend uses 'speciality' not 'specialization'
+    workingHours?: string | null;
+    yrsOfExperience?: number | null;
+    languages?: string[] | null;
 }
 export interface UserSignupData {
     email: string;

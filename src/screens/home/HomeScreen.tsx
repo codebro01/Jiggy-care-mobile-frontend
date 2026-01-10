@@ -177,7 +177,7 @@ export function HomeScreen({ navigation }: Props) {
                 { color: theme.colors.text.primary, fontFamily: theme.fontFamily.bold },
               ]}
             >
-              Dr. {user?.firstName || 'Doctor'}
+              Dr. {user?.fullName || 'N/A'}
             </Text>
           </View>
           <Pressable
@@ -205,7 +205,8 @@ export function HomeScreen({ navigation }: Props) {
           )}
           {renderStatCard(
             'Rating',
-            user?.rating?.toFixed(1) || '4.8',
+            // user?.r.toFixed(1) || 'N/A',
+            'N/A',
             'star',
             [theme.colors.palette.warning[500], theme.colors.palette.warning[400]]
           )}
