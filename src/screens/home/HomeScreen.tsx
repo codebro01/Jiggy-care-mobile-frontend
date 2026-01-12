@@ -21,6 +21,8 @@ import { useAuthStore, useAppointmentsStore } from '../../stores';
 import { Card, Avatar, Badge, StatusBadge, SkeletonCard } from '../../components';
 import { HomeStackParamList } from '../../navigation/types';
 import { Appointment } from '../../types';
+import { homeService } from '../../services/home.service';
+import {appointmentService} from '../../services/appointment.service';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeScreen'>;
 
@@ -35,11 +37,12 @@ export function HomeScreen({ navigation }: Props) {
     appointments,
     isLoading,
     loadAppointments,
-    getUpcomingCount,
-    getCompletedCount,
   } = useAppointmentsStore();
 
   const [refreshing, setRefreshing] = React.useState(false);
+  const [upcoming, setUpcoming] = React.useState(0);
+  const [completed, setCompleted] = React.useState(0);    
+  const [averageRating, setAverageRating] = React.useState(0);
 
   useEffect(() => {
     loadAppointments();
@@ -61,6 +64,36 @@ export function HomeScreen({ navigation }: Props) {
   const upcomingAppointments = appointments.filter(
     (apt) => apt.status === 'confirmed' || apt.status === 'pending'
   ).slice(0, 3);
+
+  useEffect(() => {
+    fetchHomeScreenData();
+  }, []);
+
+
+  const fetchHomeScreenData = async () => {
+    try {
+     const response = await homeService.fetchHomeData();
+      console.log(response)
+      setUpcoming(response.data.noOfUpcomingBookings.total);
+      setCompleted(response.data.noOfCompletedBookings.total);
+      setAverageRating(response.data.averageRating.total);
+
+    } catch (error) {
+      console.log(error)
+
+      console.error('Failed to fetch home screen data:', error);
+    }
+  };
+
+  const fetchAppointments = async () => {
+    try {
+      const response = await appointmentService.upcomingAppointments();
+      console.log(response)
+    } catch (error) {
+      console.log(error)
+      console.error('Failed to fetch appointments:', error);
+    }
+  }
 
   const renderStatCard = (
     title: string,
@@ -84,14 +117,14 @@ export function HomeScreen({ navigation }: Props) {
 
   const renderAppointmentCard = (appointment: Appointment) => (
     <Card
-      key={appointment.id}
+      key={appointment.appointmentId}
       variant="elevated"
       style={styles.appointmentCard}
     >
       <View style={styles.appointmentHeader}>
         <Avatar
-          name={`${appointment.patient.firstName} ${appointment.patient.lastName}`}
-          source={appointment.patient.avatar}
+          name={`${appointment.patientName}`}
+          source={appointment.patientName}
           size="md"
           showStatus
           isOnline={appointment.status === 'confirmed'}
@@ -103,7 +136,7 @@ export function HomeScreen({ navigation }: Props) {
               { color: theme.colors.text.primary, fontFamily: theme.fontFamily.semiBold },
             ]}
           >
-            {appointment.patient.firstName} {appointment.patient.lastName}
+            {appointment.patientName} 
           </Text>
           <Text
             style={[
@@ -116,35 +149,13 @@ export function HomeScreen({ navigation }: Props) {
               month: 'short',
               day: 'numeric',
             })}{' '}
-            at {appointment.time}
+            at {appointment.date}
           </Text>
         </View>
         <StatusBadge status={appointment.status} />
       </View>
+
       
-      <View style={styles.appointmentFooter}>
-        <View style={styles.appointmentType}>
-          <Ionicons
-            name={
-              appointment.type === 'video'
-                ? 'videocam-outline'
-                : appointment.type === 'audio'
-                ? 'call-outline'
-                : 'chatbubble-outline'
-            }
-            size={16}
-            color={theme.colors.text.tertiary}
-          />
-          <Text
-            style={[
-              styles.appointmentTypeText,
-              { color: theme.colors.text.tertiary },
-            ]}
-          >
-            {appointment.type.charAt(0).toUpperCase() + appointment.type.slice(1)} consultation
-          </Text>
-        </View>
-      </View>
     </Card>
   );
 
@@ -193,20 +204,19 @@ export function HomeScreen({ navigation }: Props) {
         <View style={styles.statsGrid}>
           {renderStatCard(
             'Upcoming',
-            getUpcomingCount(),
+            upcoming,
             'calendar',
             [theme.colors.palette.primary[500], theme.colors.palette.primary[400]]
           )}
           {renderStatCard(
             'Completed',
-            getCompletedCount(),
+            completed,
             'checkmark-circle',
             [theme.colors.palette.success[500], theme.colors.palette.success[400]]
           )}
           {renderStatCard(
             'Rating',
-            // user?.r.toFixed(1) || 'N/A',
-            'N/A',
+            averageRating === null ? 0 : averageRating.toFixed(1), 
             'star',
             [theme.colors.palette.warning[500], theme.colors.palette.warning[400]]
           )}

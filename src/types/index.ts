@@ -56,17 +56,12 @@ export interface Patient {
 export type AppointmentStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
 
 export interface Appointment {
-    id: string;
-    patient: Patient;
-    consultant: User;
+    appointmentId: string;
+    patientId: string;
+    patientName: string, 
     date: string;
-    time: string;
     duration: number; // in minutes
     status: AppointmentStatus;
-    type: 'video' | 'audio' | 'chat';
-    notes?: string;
-    createdAt: string;
-    updatedAt: string;
 }
 
 // Chat Types

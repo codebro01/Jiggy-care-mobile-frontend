@@ -35,71 +35,68 @@ const mockPatient: Patient = {
     dateOfBirth: '1990-05-15',
 };
 
-const mockConsultant: User = {
+const mockConsultant: Partial<User> = {
     id: 'c1',
     email: 'doctor@example.com',
-    firstName: 'Dr. John',
-    lastName: 'Smith',
+    fullName: 'Dr. John',
     role: 'consultant',
-    specialization: 'General Practitioner',
-    rating: 4.8,
-    experience: 10,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    speciality: 'General Practitioner',
+yrsOfExperience: 25, 
+    dateJoined: new Date().toISOString(),
 };
 
-const mockAppointments: Appointment[] = [
-    {
-        id: 'a1',
-        patient: mockPatient,
-        consultant: mockConsultant,
-        date: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
-        time: '10:00',
-        duration: 30,
-        status: 'confirmed',
-        type: 'video',
-        notes: 'Follow-up consultation',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    },
-    {
-        id: 'a2',
-        patient: { ...mockPatient, id: 'p2', firstName: 'Sarah', lastName: 'Williams' },
-        consultant: mockConsultant,
-        date: new Date(Date.now() + 172800000).toISOString().split('T')[0], // Day after tomorrow
-        time: '14:30',
-        duration: 45,
-        status: 'pending',
-        type: 'chat',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    },
-    {
-        id: 'a3',
-        patient: { ...mockPatient, id: 'p3', firstName: 'Michael', lastName: 'Brown' },
-        consultant: mockConsultant,
-        date: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Yesterday
-        time: '09:00',
-        duration: 30,
-        status: 'completed',
-        type: 'video',
-        notes: 'Initial consultation - prescribed medication',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    },
-    {
-        id: 'a4',
-        patient: { ...mockPatient, id: 'p4', firstName: 'Emma', lastName: 'Davis' },
-        consultant: mockConsultant,
-        date: new Date(Date.now() - 172800000).toISOString().split('T')[0],
-        time: '11:00',
-        duration: 30,
-        status: 'cancelled',
-        type: 'audio',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    },
-];
+// const mockAppointments: Appointment[] = [
+//     {
+//         appointmentId: 'a1',
+//         patientId: 'p1',
+//         consultantId: 'c1',
+//         date: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
+//         time: '10:00',
+//         duration: 30,
+//         status: 'confirmed',
+//         type: 'video',
+//         notes: 'Follow-up consultation',
+//         createdAt: new Date().toISOString(),
+//         updatedAt: new Date().toISOString(),
+//     },
+//     {
+//         appointmentId: 'a2',
+//         patientId: { ...mockPatient, ointappointmentId: 'p2', firstName: 'Sarah', lastName: 'Williams' },
+//         consultant: mockConsultant,
+//         date: new Date(Date.now() + 172800000).toISOString().split('T')[0], // Day after tomorrow
+//         time: '14:30',
+//         duration: 45,
+//         status: 'pending',
+//         type: 'chat',
+//         createdAt: new Date().toISOString(),
+//         updatedAt: new Date().toISOString(),
+//     },
+//     {
+//         appointmentId: 'a3',
+//         patientId: { ...mockPatient, ointappointmentId: 'p3', firstName: 'Michael', lastName: 'Brown' },
+//         consultant: mockConsultant,
+//         date: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Yesterday
+//         time: '09:00',
+//         duration: 30,
+//         status: 'completed',
+//         type: 'video',
+//         notes: 'Initial consultation - prescribed medication',
+//         createdAt: new Date().toISOString(),
+//         updatedAt: new Date().toISOString(),
+//     },
+//     {
+//         appointmentId: 'a4',
+//         patientId: { ...mockPatient, ointappointmentId: 'p4', firstName: 'Emma', lastName: 'Davis' },
+//         consultant: mockConsultant,
+//         date: new Date(Date.now() - 172800000).toISOString().split('T')[0],
+//         time: '11:00',
+//         duration: 30,
+//         status: 'cancelled',
+//         type: 'audio',
+//         createdAt: new Date().toISOString(),
+//         updatedAt: new Date().toISOString(),
+//     },
+// ];
 
 export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
     appointments: [],
@@ -119,7 +116,7 @@ export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
         try {
             // TODO: Replace with actual API call
             await new Promise(resolve => setTimeout(resolve, 800));
-            set({ appointments: mockAppointments, isLoading: false });
+            set({ appointments: [], isLoading: false });
         } catch (error) {
             set({
                 error: error instanceof Error ? error.message : 'Failed to load appointments',
