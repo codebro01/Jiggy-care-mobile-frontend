@@ -61,9 +61,14 @@ const processQueue = (error: any, token: string | null = null) => {
 apiClient.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
         const accessToken = await tokenManager.getAccessToken();
-
+        console.log('🔍 REQUEST DEBUG:', {
+            url: config.url,
+            method: config.method,
+            headers: config.headers,
+            Authorization: `Bearer ${accessToken}`,
+        });
         if (accessToken && config.headers) {
-            config.headers['x-access-token'] = accessToken;
+            config.headers['Authorization'] = `Bearer ${accessToken}`;
         }
 
         return config;
@@ -83,6 +88,8 @@ apiClient.interceptors.response.use(
         if (accessToken && refreshToken) {
             tokenManager.setTokens(accessToken, refreshToken);
         }
+
+        console.log(accessToken, refreshToken)
 
         return response;
     },

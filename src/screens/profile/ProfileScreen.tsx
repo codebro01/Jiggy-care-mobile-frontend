@@ -268,21 +268,10 @@ export function ProfileScreen({ navigation }: Props) {
                  
                 </View>
               )}
-              <SettingItem
-                icon="school-outline"
-                label="Certification"
-                value={user?.certification || 'Not set'}
-                hasChevron={false}
-              />
-              <SettingItem
-                icon="time-outline"
-                label="Years of Experience"
-                value={user?.yrsOfExperience ? `${user.yrsOfExperience} years` : 'Not set'}
-                hasChevron={false}
-              />
-              <View style={styles.workingHoursSection}>
-                <View style={styles.settingIconContainer}>
-                  <Ionicons name="briefcase-outline" size={20} color={theme.colors.accent} />
+
+              <View style={[styles.workingHoursSection, { borderBottomColor: theme.colors.border.primary }]}>
+                <View style={[styles.settingIconContainer, { backgroundColor: theme.colors.surface.secondary }]}>
+                  <Ionicons name="time-outline" size={20} color={theme.colors.accent} />
                 </View>
                 <View style={styles.workingHoursContent}>
                   <Text
@@ -293,18 +282,27 @@ export function ProfileScreen({ navigation }: Props) {
                   >
                     Working Hours
                   </Text>
-                  {user?.workingHours && typeof user.workingHours === 'object' ? (
+                  {user?.workingHours && typeof user.workingHours === 'object' && Object.keys(user.workingHours).length > 0 ? (
                     <View style={styles.workingHoursList}>
                       {Object.entries(user.workingHours).map(([day, hours]) => (
-                        <Text
-                          key={day}
-                          style={[
-                            styles.workingHoursItem,
-                            { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.regular },
-                          ]}
-                        >
-                          {day.charAt(0).toUpperCase() + day.slice(1)}: {'hours'}
-                        </Text>
+                        <View key={day} style={styles.workingHoursRow}>
+                          <Text
+                            style={[
+                              styles.workingHoursDay,
+                              { color: theme.colors.text.primary, fontFamily: theme.fontFamily.medium },
+                            ]}
+                          >
+                            {day.charAt(0).toUpperCase() + day.slice(1)}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.workingHoursTime,
+                              { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.regular },
+                            ]}
+                          >
+                            {hours}
+                          </Text>
+                        </View>
                       ))}
                     </View>
                   ) : (
@@ -314,6 +312,25 @@ export function ProfileScreen({ navigation }: Props) {
                   )}
                 </View>
               </View>
+              <SettingItem
+                icon="school-outline"
+                label="Certification"
+                value={Array.isArray(user?.certification) ? user.certification.join(', ') : user?.certification || 'Not set'}
+                hasChevron={false}
+              />
+              <SettingItem
+                icon="language-outline"
+                label="Languages"
+                value={Array.isArray(user?.languages) ? user.languages.join(', ') : user?.languages || 'Not set'}
+                hasChevron={false}
+              />
+              <SettingItem
+                icon="time-outline"
+                label="Years of Experience"
+                value={user?.yrsOfExperience ? `${user.yrsOfExperience} years` : 'Not set'}
+                hasChevron={false}
+              />
+          
               <SettingItem
                 icon={user?.availability ? "checkmark-circle" : "close-circle"}
                 label="Availability"
@@ -505,7 +522,6 @@ const styles = StyleSheet.create({
   },
   workingHoursSection: {
     flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
@@ -514,11 +530,21 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
-  workingHoursItem: {
-    fontSize: 13,
-    marginTop: 2,
-  },
   workingHoursList: {
     marginTop: 8,
+    gap: 6,
+  },
+  workingHoursRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  workingHoursDay: {
+    fontSize: 14,
+    minWidth: 80,
+  },
+  workingHoursTime: {
+    fontSize: 13,
   },
 });

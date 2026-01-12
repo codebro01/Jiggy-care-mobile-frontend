@@ -82,9 +82,12 @@ const { signIn } = useGoogleAuth();
 
       const response = await authService.login(email, password);
 
+      if(!email || !password){
+        showError('Email and password are required', 'Error');
+        return;
+      }
       showSuccess('Login successful', 'Success');
       console.log('Login successful:', response);
-
       // Update global state which triggers navigation to Main
       // We fill in missing fields with placeholders + current date
 
@@ -121,6 +124,8 @@ const { signIn } = useGoogleAuth();
 
   const handleGoogleSignIn = async () => {
     try {
+      setLoading(true)
+
       const idToken = await signIn(); // from useGoogleAuth
 
       if (!idToken) throw new Error('No ID token');
@@ -148,6 +153,9 @@ const { signIn } = useGoogleAuth();
         languages: response.data.languages,
       });
       console.log(response);
+      setLoading(false)
+      showSuccess('Login successful', 'Success');
+
     } catch (error: any) {
       showError(`Error: ${error.message || error}`, 'Error')
       console.log(error)

@@ -10,7 +10,10 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  Platform,
+  KeyboardAvoidingView
 } from 'react-native';
+import { WorkingHoursEditor } from './WorkingHoursEditor';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,6 +21,9 @@ import { useAppTheme } from '../../theme';
 import { useAuthStore } from '../../stores';
 import { Avatar, Button, Input } from '../../components';
 import { ProfileStackParamList } from '../../navigation/types';
+import { userService } from '@/services/user.service';
+import { useAlert, Alert as AlertComponent } from '@/components/alert';
+
 
 type EditProfileScreenNavigationProp = NativeStackNavigationProp<
   ProfileStackParamList,
@@ -31,6 +37,7 @@ interface Props {
 export function EditProfileScreen({ navigation }: Props) {
   const theme = useAppTheme();
   const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
 
   // Basic Information
   const [fullName, setFullName] = useState(user?.fullName || '');
@@ -42,27 +49,57 @@ export function EditProfileScreen({ navigation }: Props) {
 
   // Professional Information (Consultant)
   const [about, setAbout] = useState(user?.about || '');
+  const [languages, setLanguages] = useState(user?.languages || []);
   const [speciality, setSpeciality] = useState(user?.speciality || '');
   const [certification, setCertification] = useState(user?.certification || '');
-  const [yrsOfExperience, setYrsOfExperience] = useState(user?.yrsOfExperience?.toString() || '');
-  const [workingHours, setWorkingHours] = useState(user?.workingHours || '');
-
+  const [yrsOfExperience, setYrsOfExperience] = useState(user?.yrsOfExperience?.toString() || 0);
+  const [workingHours, setWorkingHours] = useState(user?.workingHours);
+  const [showWorkingHoursEditor, setShowWorkingHoursEditor] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { alert, showSuccess, showError, showWarning, hideAlert } = useAlert();
 
+
+
+  console.log(fullName,
+    email,
+    phone,
+    address,
+    dateOfBirth,
+    gender,
+    about,
+    languages,
+    speciality,
+    certification,
+    yrsOfExperience,
+    workingHours,)
   const handleSave = async () => {
     try {
       setIsLoading(true);
+      const data = {
+        fullName,
+        email,
+        phone,
+        address,
+        dateOfBirth,
+        gender,
+        about,
+        languages: languages as string[],
+        // speciality,
+        certification: certification as string[],
+        yrsOfExperience: Number(yrsOfExperience),
+        workingHours,
+      };
 
-      // TODO: Call your backend API to update profile
-      // await profileService.updateProfile({...formData});
+      const reponse = await userService.updateProfile(data);
+      console.log(reponse)
 
-      // Update local auth store
-      // updateUser({...updatedData});
-
-      Alert.alert('Success', 'Profile updated successfully');
+      setUser({...user, ...reponse.data})
+      showSuccess('Profile updated successfully', 'Success');
+      setIsLoading(false);
       navigation.goBack();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update profile');
+    } catch (error: any) {
+      console.log(error)
+      showError(`${error.message || error}`, 'Error');
     } finally {
       setIsLoading(false);
     }
@@ -92,158 +129,206 @@ export function EditProfileScreen({ navigation }: Props) {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Avatar */}
-        <View style={styles.avatarSection}>
-          <Avatar
-            name={fullName}
-            source={user?.avatar}
-            size="2xl"
-          />
-          <Pressable
-            style={[styles.changePhotoButton, { backgroundColor: theme.colors.accent }]}
-          >
-            <Ionicons name="camera" size={16} color="#FFFFFF" />
-          </Pressable>
-        </View>
-
-        {/* Basic Information Section */}
-        <Text
-          style={[
-            styles.sectionTitle,
-            { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.semiBold },
-          ]}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          BASIC INFORMATION
-        </Text>
-
-        <View style={styles.form}>
-          <Input
-            label="Full Name"
-            placeholder="Enter your full name"
-            value={fullName}
-            onChangeText={setFullName}
-            leftIcon="person-outline"
-          />
-
-          <Input
-            label="Email"
-            placeholder="Enter email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            leftIcon="mail-outline"
-            editable={false}
-          />
-
-          <Input
-            label="Phone"
-            placeholder="Enter phone number"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            leftIcon="call-outline"
-          />
-
-          <Input
-            label="Address"
-            placeholder="Enter your address"
-            value={address}
-            onChangeText={setAddress}
-            leftIcon="location-outline"
-          />
-
-          <Input
-            label="Date of Birth"
-            placeholder="YYYY-MM-DD"
-            value={dateOfBirth}
-            onChangeText={setDateOfBirth}
-            leftIcon="calendar-outline"
-          />
-
-          <Input
-            label="Gender"
-            placeholder="Male/Female/Other"
-            value={gender}
-            onChangeText={setGender}
-            leftIcon="male-female-outline"
-          />
-        </View>
-
-        {/* Professional Information Section - Only for Consultants */}
-        {user?.role === 'consultant' && (
-          <>
-            <Text
-              style={[
-                styles.sectionTitle,
-                { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.semiBold },
-              ]}
+          {/* Avatar */}
+          <View style={styles.avatarSection}>
+            <Avatar
+              name={fullName}
+              source={user?.avatar}
+              size="2xl"
+            />
+            <Pressable
+              style={[styles.changePhotoButton, { backgroundColor: theme.colors.accent }]}
             >
-              PROFESSIONAL INFORMATION
-            </Text>
+              <Ionicons name="camera" size={16} color="#FFFFFF" />
+            </Pressable>
+          </View>
 
-            <View style={styles.form}>
-              <Input
-                label="About"
-                placeholder="Brief description about yourself"
-                value={about}
-                onChangeText={setAbout}
-                multiline
-                numberOfLines={4}
-                leftIcon="information-circle-outline"
+          {/* Basic Information Section */}
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.semiBold },
+            ]}
+          >
+            BASIC INFORMATION
+          </Text>
+
+          <View style={styles.form}>
+            <Input
+              label="Full Name"
+              placeholder="Enter your full name"
+              value={fullName}
+              onChangeText={setFullName}
+              leftIcon="person-outline"
+            />
+
+            <Input
+              label="Email"
+              placeholder="Enter email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              leftIcon="mail-outline"
+              editable={false}
+            />
+
+            <Input
+              label="Phone"
+              placeholder="Enter phone number"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              leftIcon="call-outline"
+            />
+
+            <Input
+              label="Address"
+              placeholder="Enter your address"
+              value={address}
+              onChangeText={setAddress}
+              leftIcon="location-outline"
+            />
+
+            <Input
+              label="Date of Birth"
+              placeholder="YYYY-MM-DD"
+              value={dateOfBirth}
+              onChangeText={setDateOfBirth}
+              leftIcon="calendar-outline"
+            />
+
+            <Input
+              label="Gender"
+              placeholder="Male/Female/Other"
+              value={gender}
+              onChangeText={setGender}
+              leftIcon="male-female-outline"
+            />
+
+            <Pressable
+              style={[styles.workingHoursButton, { backgroundColor: theme.colors.surface.secondary }]}
+              onPress={() => setShowWorkingHoursEditor(true)}
+            >
+              <View style={styles.workingHoursContent}>
+                <View style={styles.workingHoursLeft}>
+                  <Ionicons name="briefcase-outline" size={20} color={theme.colors.text.secondary} />
+                  <View style={{ marginLeft: 12 }}>
+                    <Text style={[styles.workingHoursLabel, { color: theme.colors.text.secondary }]}>
+                      Working Hours
+                    </Text>
+                    {workingHours && Object.keys(workingHours).length > 0 ? (
+                      <Text style={[styles.workingHoursValue, { color: theme.colors.text.primary }]}>
+                        {Object.keys(workingHours).length} days set
+                      </Text>
+                    ) : (
+                      <Text style={[styles.workingHoursPlaceholder, { color: theme.colors.text.tertiary }]}>
+                        Not set
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
+              </View>
+            </Pressable>
+          </View>
+
+          {/* Professional Information Section - Only for Consultants */}
+          {user?.role === 'consultant' && (
+            <>
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.semiBold },
+                ]}
+              >
+                PROFESSIONAL INFORMATION
+              </Text>
+
+              <View style={styles.form}>
+                <Input
+                  label="About"
+                  placeholder="Brief description about yourself"
+                  value={about}
+                  onChangeText={setAbout}
+                  multiline
+                  numberOfLines={4}
+                  leftIcon="information-circle-outline"
+                />
+
+                <Input
+                  label="Specialization"
+                  placeholder="e.g., Cardiology, Pediatrics"
+                  value={speciality}
+                  onChangeText={setSpeciality}
+                  leftIcon="medical-outline"
+                />
+
+
+                <Input
+                  label="Certification"
+                  placeholder="Your certifications"
+                  value={Array.isArray(certification) ? certification.join(', ') : certification}
+                  onChangeText={(value) => setCertification(value.split(',').map((cert) => cert.trim()))}
+                  leftIcon="school-outline"
+                />
+                <Input
+                  label="Languages"
+                  placeholder="Your languages"
+                  value={Array.isArray(languages) ? languages.join(', ') : languages}
+                  onChangeText={(value) => setLanguages(value.split(',').map((lang) => lang.trim()))}
+                  leftIcon="language-outline"
+                />
+
+                <Input
+                  label="Years of Experience"
+                  placeholder="Enter years"
+                  value={String(yrsOfExperience)}
+                  onChangeText={setYrsOfExperience}
+                  keyboardType="numeric"
+                  leftIcon="time-outline"
+                />
+
+
+              </View>
+
+              <Button
+                title="Save Changes"
+                onPress={handleSave}
+                loading={isLoading}
+                fullWidth
               />
+            </>
+          )}
+        </ScrollView>
 
-              <Input
-                label="Specialization"
-                placeholder="e.g., Cardiology, Pediatrics"
-                value={speciality}
-                onChangeText={setSpeciality}
-                leftIcon="medical-outline"
-              />
+        <View style={[styles.bottomAction, { backgroundColor: theme.colors.background.primary }]}>
 
-              <Input
-                label="Certification"
-                placeholder="Your certifications"
-                value={certification}
-                onChangeText={setCertification}
-                leftIcon="school-outline"
-              />
-
-              <Input
-                label="Years of Experience"
-                placeholder="Enter years"
-                value={yrsOfExperience}
-                onChangeText={setYrsOfExperience}
-                keyboardType="numeric"
-                leftIcon="time-outline"
-              />
-
-              <Input
-                label="Working Hours"
-                placeholder="e.g., Mon-Fri 9AM-5PM"
-                value={workingHours}
-                onChangeText={setWorkingHours}
-                leftIcon="briefcase-outline"
-              />
-            </View>
-          </>
-        )}
-      </ScrollView>
-
-      {/* Bottom Action */}
-      <View style={[styles.bottomAction, { backgroundColor: theme.colors.background.primary }]}>
-        <Button
-          title="Save Changes"
-          onPress={handleSave}
-          loading={isLoading}
-          fullWidth
+        </View>
+        <AlertComponent
+          type={alert.type}
+          message={alert.message}
+          title={alert.title}
+          visible={alert.visible}
+          onClose={hideAlert}
         />
-      </View>
+      </KeyboardAvoidingView>
+      <WorkingHoursEditor
+        visible={showWorkingHoursEditor}
+        workingHours={workingHours || {}}
+        onClose={() => setShowWorkingHoursEditor(false)}
+        onSave={(hours) => {
+          setWorkingHours(hours);
+          setShowWorkingHoursEditor(false);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -301,14 +386,38 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   bottomAction: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 32,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  workingHoursButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  workingHoursContent: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  workingHoursLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  workingHoursLabel: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  workingHoursValue: {
+    fontSize: 16,
+  },
+  workingHoursPlaceholder: {
+    fontSize: 14,
   },
 });

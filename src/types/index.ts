@@ -21,9 +21,9 @@ export interface User {
     // Consultant-specific fields
     about?: string | null;
     availability?: boolean;
-    certification?: string | null;
+    certification?: string[] | null;
     speciality?: string | null; // Note: backend uses 'speciality' not 'specialization'
-    workingHours?: string | null;
+    workingHours?: Record<string, string> | null;
     yrsOfExperience?: number | null;
     languages?: string[] | null;
 }
