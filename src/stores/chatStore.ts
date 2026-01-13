@@ -1,10 +1,9 @@
-/**
- * Jiggy Care Mobile - Chat Store
- * Manages chat conversations and messages
- */
-
+// stores/chatStore.ts
 import { create } from 'zustand';
-import { Message, Conversation, Patient } from '../types';
+import { Message, Conversation } from '../types';
+import { socketService } from '../services/socket.service';
+import { useAuthStore } from './authStore';
+import { chatService } from '@/services/chat.service';
 
 interface ChatState {
     conversations: Conversation[];
@@ -13,40 +12,23 @@ interface ChatState {
     isTyping: boolean;
     isLoading: boolean;
     error: string | null;
+    isSocketConnected: boolean;
 
     // Actions
+    connectSocket: () => void;
+    disconnectSocket: () => void;
     setConversations: (conversations: Conversation[]) => void;
-    setCurrentConversation: (conversation: Conversation | null) => void;
+    setCurrentConversation: (conversation: Conversation | null) => Promise<void>;
     setMessages: (messages: Message[]) => void;
     addMessage: (message: Message) => void;
-    updateMessageStatus: (messageId: string, status: Message['status']) => void;
+    updateMessageStatus: (messageId: string, status: Message['isRead']) => void;
     setTyping: (isTyping: boolean) => void;
     sendMessage: (content: string, type?: Message['type']) => Promise<void>;
     loadConversations: () => Promise<void>;
     loadMessages: (conversationId: string) => Promise<void>;
-    markAsRead: (conversationId: string) => void;
+    markAsRead: (conversationId: string, messageIds: string[]) => void;
     clearError: () => void;
 }
-
-// Mock data for development
-const mockPatients: Patient[] = [
-    {
-        id: 'p1',
-        firstName: 'Victor',
-        lastName: 'Damilola',
-        email: 'victor@example.com',
-        phone: '+234 801 234 5678',
-        gender: 'male',
-    },
-    {
-        id: 'p2',
-        firstName: 'Sarah',
-        lastName: 'Williams',
-        email: 'sarah@example.com',
-        phone: '+234 802 345 6789',
-        gender: 'female',
-    },
-];
 
 export const useChatStore = create<ChatState>((set, get) => ({
     conversations: [],
@@ -55,10 +37,69 @@ export const useChatStore = create<ChatState>((set, get) => ({
     isTyping: false,
     isLoading: false,
     error: null,
+    isSocketConnected: false,
+
+    connectSocket: () => {
+        const user = useAuthStore.getState().user;
+        if (!user) {
+            console.error('No user found, cannot connect socket');
+            return;
+        }
+
+        try {
+            const tokens = useAuthStore.getState().tokens; // Get token from auth store
+            socketService.connect(tokens?.accessToken || '');
+
+            // Listen for incoming messages
+            socketService.onMessage((message) => {
+                console.log('📨 Received message:', message);
+                get().addMessage(message);
+
+                const { currentConversation } = get();
+                if (currentConversation?.id === message.conversationId &&
+                    message.senderId !== user.id) {
+                    // Mark this message as read after a short delay
+                    setTimeout(() => {
+                        get().markAsRead(message.conversationId, [message.id]);
+                    }, 1000);
+                }
+            });
+
+            socketService.onMessagesRead((data) => {
+                console.log('✅ Messages marked as read:', data);
+                set((state) => ({
+                    messages: state.messages.map(msg =>
+                        data.messageIds.includes(msg.id)
+                            ? { ...msg, status: 'read' }
+                            : msg
+                    ),
+                }));
+            });
+
+            set({ isSocketConnected: true });
+        } catch (error) {
+            console.error('Socket connection failed:', error);
+            set({ error: 'Failed to connect to chat server' });
+        }
+    },
+
+    disconnectSocket: () => {
+        socketService.disconnect();
+        set({ isSocketConnected: false });
+    },
 
     setConversations: (conversations) => set({ conversations }),
 
-    setCurrentConversation: (conversation) => set({ currentConversation: conversation }),
+    setCurrentConversation: async (conversation) => {
+        if (!conversation) {
+            set({ currentConversation: null });
+            return;
+        }
+
+        // Just set the conversation, don't join here
+        // Let the screen handle joining
+        set({ currentConversation: conversation });
+    },
 
     setMessages: (messages) => set({ messages }),
 
@@ -76,31 +117,47 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     sendMessage: async (content, type = 'text') => {
         const { currentConversation, addMessage, updateMessageStatus } = get();
-        if (!currentConversation) return;
+        const user = useAuthStore.getState().user;
+
+        if (!currentConversation || !user) {
+            set({ error: 'No active conversation or user' });
+            return;
+        }
 
         const tempId = `temp-${Date.now()}`;
         const newMessage: Message = {
             id: tempId,
             conversationId: currentConversation.id,
-            senderId: 'current-user', // Will be replaced with actual user ID
+            senderId: user.id,
             content,
             type,
-            status: 'sending',
+            isRead: false,
             createdAt: new Date().toISOString(),
         };
 
+        // Optimistically add message to UI
         addMessage(newMessage);
 
         try {
-            // TODO: Replace with actual API call
-            await new Promise(resolve => setTimeout(resolve, 500));
-            updateMessageStatus(tempId, 'sent');
+            // Send message via WebSocket
+            await socketService.sendMessage({
+                conversationId: currentConversation.id,
+                consultantId: user.role === 'consultant' ? user.id : currentConversation.consultantId,
+                patientId: user.role === 'patient' ? user.id : currentConversation.patientId,
+                content,
+                senderType:  'consultant',
+            });
 
-            // Simulate delivery after a short delay
-            setTimeout(() => {
-                updateMessageStatus(tempId, 'delivered');
-            }, 1000);
+            console.log('✅ Message sent successfully');
+
+            // Update status to sent
+            updateMessageStatus(tempId, true);
+
+            // The backend should emit 'receive_message' back to confirm
+            // You might want to update the status when you receive confirmation
         } catch (error) {
+            console.error('❌ Failed to send message:', error);
+            updateMessageStatus(tempId, false);
             set({ error: 'Failed to send message' });
         }
     },
@@ -108,10 +165,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     loadConversations: async () => {
         set({ isLoading: true, error: null });
         try {
-            // TODO: Replace with actual API call
+            // TODO: Load from API
             await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Mock conversations will be generated from appointments
             set({ isLoading: false });
         } catch (error) {
             set({
@@ -124,41 +179,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     loadMessages: async (conversationId) => {
         set({ isLoading: true, error: null });
         try {
-            // TODO: Replace with actual API call
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Load previous messages from HTTP API
+            const response = await chatService.loadMessages(conversationId, 50, 0);
 
-            // Mock messages
-            const mockMessages: Message[] = [
-                {
-                    id: 'm1',
-                    conversationId,
-                    senderId: 'p1',
-                    content: 'Hello Doctor, I have been experiencing headaches for the past few days.',
-                    type: 'text',
-                    status: 'read',
-                    createdAt: new Date(Date.now() - 3600000).toISOString(),
-                },
-                {
-                    id: 'm2',
-                    conversationId,
-                    senderId: 'current-user',
-                    content: 'Hello! I understand. Can you describe the type of headache? Is it constant or does it come and go?',
-                    type: 'text',
-                    status: 'read',
-                    createdAt: new Date(Date.now() - 3500000).toISOString(),
-                },
-                {
-                    id: 'm3',
-                    conversationId,
-                    senderId: 'p1',
-                    content: 'It comes and goes, mostly in the evening. Sometimes I feel nauseous too.',
-                    type: 'text',
-                    status: 'read',
-                    createdAt: new Date(Date.now() - 3400000).toISOString(),
-                },
-            ];
+            const messages = response.messages || []; // Adjust based on your API response structure
 
-            set({ messages: mockMessages, isLoading: false });
+            set({ messages, isLoading: false });
         } catch (error) {
             set({
                 error: error instanceof Error ? error.message : 'Failed to load messages',
@@ -167,11 +193,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
     },
 
-    markAsRead: (conversationId) => set((state) => ({
-        conversations: state.conversations.map(conv =>
-            conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
-        ),
-    })),
+    markAsRead: (conversationId: string, messageIds: string[]) => {
+        if (messageIds.length === 0) return;
+
+        console.log('📖 Marking messages as read:', { conversationId, messageIds });
+
+        // Emit to backend
+        socketService.markAsRead({ conversationId, messageIds });
+
+        // Optimistically update local state
+        set((state) => ({
+            messages: state.messages.map(msg =>
+                messageIds.includes(msg.id)
+                    ? { ...msg, status: 'read' }
+                    : msg
+            ),
+            conversations: state.conversations.map(conv =>
+                conv.id === conversationId
+                    ? { ...conv, unreadCount: Math.max(0, (conv.unreadCount || 0) - messageIds.length) }
+                    : conv
+            ),
+        }));
+    },
 
     clearError: () => set({ error: null }),
 }));

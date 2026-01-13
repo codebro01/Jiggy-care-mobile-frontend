@@ -57,7 +57,7 @@ const setUserSignupData = useAuthStore((state) => state.setUserSignupData)
 
      navigation.navigate('OTPVerification', { fullName, email });
 
-     console.log(response)
+    //  console.log(response)
    } catch (error: any) {
      setIsLoading(false);
 

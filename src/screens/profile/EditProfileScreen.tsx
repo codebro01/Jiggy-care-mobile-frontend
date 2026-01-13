@@ -60,18 +60,18 @@ export function EditProfileScreen({ navigation }: Props) {
 
 
 
-  console.log(fullName,
-    email,
-    phone,
-    address,
-    dateOfBirth,
-    gender,
-    about,
-    languages,
-    speciality,
-    certification,
-    yrsOfExperience,
-    workingHours,)
+  // console.log(fullName,
+  //   email,
+  //   phone,
+  //   address,
+  //   dateOfBirth,
+  //   gender,
+  //   about,
+  //   languages,
+  //   speciality,
+  //   certification,
+  //   yrsOfExperience,
+  //   workingHours,)
   const handleSave = async () => {
     try {
       setIsLoading(true);
@@ -91,7 +91,7 @@ export function EditProfileScreen({ navigation }: Props) {
       };
 
       const reponse = await userService.updateProfile(data);
-      console.log(reponse)
+      // console.log(reponse)
 
       setUser({...user, ...reponse.data})
       showSuccess('Profile updated successfully', 'Success');

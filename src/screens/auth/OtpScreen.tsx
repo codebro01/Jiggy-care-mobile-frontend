@@ -109,10 +109,10 @@ const {setUser} = useAuthStore()
         setIsLoading(true);
 
         try {
-            console.log(String(code), otp)
+            // console.log(String(code), otp)
             const response = await authService.signup(userSignupData.fullName, userSignupData.email, userSignupData.password, String(code));
             showSuccess('Verification successful!', 'Success');
-            console.log(response.data)
+            // console.log(response.data)
             setUser(response.data);
            
         } catch (error: any) {

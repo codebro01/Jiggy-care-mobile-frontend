@@ -10,6 +10,7 @@ import { useAppTheme } from '../theme';
 // Screens
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { NotificationsScreen } from '../screens/home/NotificationsScreen';
+import { ChatScreen } from '../screens/appointments/ChatScreen';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
@@ -28,6 +29,8 @@ export function HomeStack() {
     >
       <Stack.Screen name="HomeScreen" component={HomeScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="ChatScreen" component={ChatScreen} />
+
     </Stack.Navigator>
   );
 }

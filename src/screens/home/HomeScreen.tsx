@@ -22,7 +22,7 @@ import { Card, Avatar, Badge, StatusBadge, SkeletonCard } from '../../components
 import { HomeStackParamList } from '../../navigation/types';
 import { Appointment } from '../../types';
 import { homeService } from '../../services/home.service';
-import {appointmentService} from '../../services/appointment.service';
+import { appointmentService } from '../../services/appointment.service';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeScreen'>;
 
@@ -36,12 +36,12 @@ export function HomeScreen({ navigation }: Props) {
   const {
     appointments,
     isLoading,
-    loadAppointments,
+    loadAppointments
   } = useAppointmentsStore();
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [upcoming, setUpcoming] = React.useState(0);
-  const [completed, setCompleted] = React.useState(0);    
+  const [completed, setCompleted] = React.useState(0);
   const [averageRating, setAverageRating] = React.useState(0);
 
   useEffect(() => {
@@ -62,18 +62,21 @@ export function HomeScreen({ navigation }: Props) {
   };
 
   const upcomingAppointments = appointments.filter(
-    (apt) => apt.status === 'confirmed' || apt.status === 'pending'
-  ).slice(0, 3);
+    (apt) => apt.status === 'upcoming'
+  );
 
   useEffect(() => {
     fetchHomeScreenData();
   }, []);
+  // useEffect(() => {
+  //   fetchAppointments();
+  // }, []);
 
 
   const fetchHomeScreenData = async () => {
     try {
-     const response = await homeService.fetchHomeData();
-      console.log(response)
+      const response = await homeService.fetchHomeData();
+      // console.log(response)
       setUpcoming(response.data.noOfUpcomingBookings.total);
       setCompleted(response.data.noOfCompletedBookings.total);
       setAverageRating(response.data.averageRating.total);
@@ -85,15 +88,18 @@ export function HomeScreen({ navigation }: Props) {
     }
   };
 
-  const fetchAppointments = async () => {
-    try {
-      const response = await appointmentService.upcomingAppointments();
-      console.log(response)
-    } catch (error) {
-      console.log(error)
-      console.error('Failed to fetch appointments:', error);
-    }
-  }
+  // const fetchAppointments = async () => {
+  //   try {
+  //     const response = await appointmentService.upcomingAppointments();
+  //     console.log(response)
+  //     setAppointments(response.data)
+  //   } catch (error) {
+  //     console.log(error)
+  //     console.error('Failed to fetch appointments:', error);
+  //   }
+  // }
+
+  // console.log('appointments', appointments)
 
   const renderStatCard = (
     title: string,
@@ -117,14 +123,13 @@ export function HomeScreen({ navigation }: Props) {
 
   const renderAppointmentCard = (appointment: Appointment) => (
     <Card
-      key={appointment.appointmentId}
+      key={appointment.bookingId}
       variant="elevated"
       style={styles.appointmentCard}
     >
       <View style={styles.appointmentHeader}>
         <Avatar
           name={`${appointment.patientName}`}
-          source={appointment.patientName}
           size="md"
           showStatus
           isOnline={appointment.status === 'confirmed'}
@@ -136,7 +141,7 @@ export function HomeScreen({ navigation }: Props) {
               { color: theme.colors.text.primary, fontFamily: theme.fontFamily.semiBold },
             ]}
           >
-            {appointment.patientName} 
+            {appointment.patientName}
           </Text>
           <Text
             style={[
@@ -149,13 +154,19 @@ export function HomeScreen({ navigation }: Props) {
               month: 'short',
               day: 'numeric',
             })}{' '}
-            at {appointment.date}
+            at {new Date(appointment.date).toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+            })}
+
+
           </Text>
         </View>
         <StatusBadge status={appointment.status} />
       </View>
 
-      
+
     </Card>
   );
 
@@ -216,11 +227,12 @@ export function HomeScreen({ navigation }: Props) {
           )}
           {renderStatCard(
             'Rating',
-            averageRating === null ? 0 : averageRating.toFixed(1), 
+            averageRating === null ? 0 : Number(averageRating).toFixed(1),
             'star',
             [theme.colors.palette.warning[500], theme.colors.palette.warning[400]]
           )}
         </View>
+
 
         {/* Upcoming Appointments */}
         <View style={styles.section}>

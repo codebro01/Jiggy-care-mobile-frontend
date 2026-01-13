@@ -40,7 +40,7 @@ const mockPrescriptions: Prescription[] = [
       email: 'victor@example.com',
     },
     consultantId: 'c1',
-    appointmentId: 'a3',
+    bookingId: 'a3',
     medications: [
       {
         name: 'Paracetamol',

@@ -152,7 +152,7 @@ const { signIn } = useGoogleAuth();
         yrsOfExperience: response.data.yrsOfExperience,
         languages: response.data.languages,
       });
-      console.log(response);
+      // console.log(response);
       setLoading(false)
       showSuccess('Login successful', 'Success');
 

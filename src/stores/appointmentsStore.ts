@@ -5,11 +5,12 @@
 
 import { create } from 'zustand';
 import { Appointment, Patient, User } from '../types';
+import {appointmentService} from '../services/appointment.service';
 
 interface AppointmentsState {
     appointments: Appointment[];
     selectedAppointment: Appointment | null;
-    filter: 'upcoming' | 'completed' | 'cancelled' | 'all';
+    filter: 'upcoming' | 'completed' | 'cancelled' | 'in_progress' | 'no_show' | 'pending_confirmation'  | 'no_show';
     isLoading: boolean;
     error: string | null;
 
@@ -35,68 +36,7 @@ const mockPatient: Patient = {
     dateOfBirth: '1990-05-15',
 };
 
-const mockConsultant: Partial<User> = {
-    id: 'c1',
-    email: 'doctor@example.com',
-    fullName: 'Dr. John',
-    role: 'consultant',
-    speciality: 'General Practitioner',
-yrsOfExperience: 25, 
-    dateJoined: new Date().toISOString(),
-};
 
-// const mockAppointments: Appointment[] = [
-//     {
-//         appointmentId: 'a1',
-//         patientId: 'p1',
-//         consultantId: 'c1',
-//         date: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
-//         time: '10:00',
-//         duration: 30,
-//         status: 'confirmed',
-//         type: 'video',
-//         notes: 'Follow-up consultation',
-//         createdAt: new Date().toISOString(),
-//         updatedAt: new Date().toISOString(),
-//     },
-//     {
-//         appointmentId: 'a2',
-//         patientId: { ...mockPatient, ointappointmentId: 'p2', firstName: 'Sarah', lastName: 'Williams' },
-//         consultant: mockConsultant,
-//         date: new Date(Date.now() + 172800000).toISOString().split('T')[0], // Day after tomorrow
-//         time: '14:30',
-//         duration: 45,
-//         status: 'pending',
-//         type: 'chat',
-//         createdAt: new Date().toISOString(),
-//         updatedAt: new Date().toISOString(),
-//     },
-//     {
-//         appointmentId: 'a3',
-//         patientId: { ...mockPatient, ointappointmentId: 'p3', firstName: 'Michael', lastName: 'Brown' },
-//         consultant: mockConsultant,
-//         date: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Yesterday
-//         time: '09:00',
-//         duration: 30,
-//         status: 'completed',
-//         type: 'video',
-//         notes: 'Initial consultation - prescribed medication',
-//         createdAt: new Date().toISOString(),
-//         updatedAt: new Date().toISOString(),
-//     },
-//     {
-//         appointmentId: 'a4',
-//         patientId: { ...mockPatient, ointappointmentId: 'p4', firstName: 'Emma', lastName: 'Davis' },
-//         consultant: mockConsultant,
-//         date: new Date(Date.now() - 172800000).toISOString().split('T')[0],
-//         time: '11:00',
-//         duration: 30,
-//         status: 'cancelled',
-//         type: 'audio',
-//         createdAt: new Date().toISOString(),
-//         updatedAt: new Date().toISOString(),
-//     },
-// ];
 
 export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
     appointments: [],
@@ -114,9 +54,8 @@ export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
     loadAppointments: async () => {
         set({ isLoading: true, error: null });
         try {
-            // TODO: Replace with actual API call
-            await new Promise(resolve => setTimeout(resolve, 800));
-            set({ appointments: [], isLoading: false });
+            const response = await appointmentService.allAppointments();
+            set({ appointments: response.data, isLoading: false });
         } catch (error) {
             set({
                 error: error instanceof Error ? error.message : 'Failed to load appointments',
@@ -124,25 +63,36 @@ export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
             });
         }
     },
-
     getFilteredAppointments: () => {
         const { appointments, filter } = get();
-        const now = new Date();
 
-        switch (filter) {
-            case 'upcoming':
-                return appointments.filter(apt =>
-                    apt.status !== 'completed' &&
-                    apt.status !== 'cancelled' &&
-                    new Date(apt.date) >= now
-                );
-            case 'completed':
-                return appointments.filter(apt => apt.status === 'completed');
-            case 'cancelled':
-                return appointments.filter(apt => apt.status === 'cancelled');
-            default:
-                return appointments;
+        if (filter === 'completed') {
+            return appointments.filter(apt => apt.status === 'completed');
         }
+
+        if (filter === 'cancelled') {
+            return appointments.filter(apt => apt.status === 'cancelled');
+        }
+
+        if (filter === 'upcoming') {
+            return appointments.filter(apt =>
+                apt.status !== 'completed' && apt.status !== 'cancelled' && apt.status !== 'in_progress' && apt.status !== 'no_show' && apt.status !== 'pending_confirmation'
+            );
+        }
+    
+        if (filter === 'in_progress') {
+            return appointments.filter(apt => apt.status === 'in_progress');
+        }
+
+        if (filter === 'no_show') {
+            return appointments.filter(apt => apt.status === 'no_show');
+        }
+
+        if (filter === 'pending_confirmation') {
+            return appointments.filter(apt => apt.status === 'pending_confirmation');
+        }
+
+        return appointments;
     },
 
     getUpcomingCount: () => {

@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios,  { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 // Base API URL
-const BASE_URL = 'https://jiggy-care.onrender.com/api/v1';
+export const BASE_URL = 'https://jiggy-care.onrender.com/api/v1';
 
 // Storage keys
 const ACCESS_TOKEN_KEY = 'x-access-token';

@@ -29,9 +29,9 @@ export interface User {
 }
 export interface UserSignupData {
     email: string;
-   password: string;
+    password: string;
     fullName: string;
-   }
+}
 
 // Authentication Types
 export interface AuthTokens {
@@ -53,12 +53,13 @@ export interface Patient {
 }
 
 // Appointment Types
-export type AppointmentStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+export type AppointmentStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'in_progress' | 'no_show' | 'pending_confirmation' | 'upcoming';
 
 export interface Appointment {
-    appointmentId: string;
+    bookingId: string;
     patientId: string;
-    patientName: string, 
+    consultantId: string;
+    patientName: string,
     date: string;
     duration: number; // in minutes
     status: AppointmentStatus;
@@ -73,15 +74,15 @@ export interface Message {
     type: 'text' | 'image' | 'file';
     fileUrl?: string;
     fileName?: string;
-    status: 'sending' | 'sent' | 'delivered' | 'read';
+    isRead: boolean;
     createdAt: string;
 }
 
 export interface Conversation {
     id: string;
-    appointmentId: string;
-    patient: Patient;
-    consultant: User;
+    bookingId: string;
+    patientId: string;
+    consultantId: string;
     lastMessage?: Message;
     unreadCount: number;
     updatedAt: string;
@@ -101,7 +102,7 @@ export interface Prescription {
     patientId: string;
     patient: Patient;
     consultantId: string;
-    appointmentId?: string;
+    bookingId?: string;
     medications: Medication[];
     diagnosis?: string;
     notes?: string;

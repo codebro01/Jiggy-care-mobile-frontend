@@ -1,3 +1,9 @@
+
+/**
+ * Jiggy Care Mobile - Chat Screen
+ * Real-time chat with patient for appointment
+ */
+
 /**
  * Jiggy Care Mobile - Chat Screen
  * Real-time chat with patient for appointment
@@ -13,8 +19,9 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'; // ✅ Import useSafeAreaInsets
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -31,6 +38,9 @@ import { useChatStore } from '../../stores';
 import { Avatar } from '../../components';
 import { AppointmentsStackParamList } from '../../navigation/types';
 import { Message } from '../../types';
+import { chatService } from '@/services/chat.service';
+import { socketService } from '@/services/socket.service';
+import { useAuthStore } from '@/stores/authStore';
 
 type ChatScreenNavigationProp = NativeStackNavigationProp<
   AppointmentsStackParamList,
@@ -47,49 +57,152 @@ export function ChatScreen({ navigation, route }: Props) {
   const theme = useAppTheme();
   const { appointment } = route.params;
   const flatListRef = useRef<FlatList>(null);
-  
+
   const {
     messages,
     isTyping,
     loadMessages,
     sendMessage,
     setCurrentConversation,
+    currentConversation,
+    connectSocket,
+    isSocketConnected,
   } = useChatStore();
-  
+
+  const user = useAuthStore((state) => state.user);
+
   const [inputText, setInputText] = useState('');
+  const [isConnecting, setIsConnecting] = useState(true);
   const sendButtonScale = useSharedValue(1);
 
+  // Initialize conversation and WebSocket
+  const insets = useSafeAreaInsets(); // ✅ Get safe area insets
+
+  
+  
+  
   useEffect(() => {
-    // Set up conversation context
-    setCurrentConversation({
-      id: `conv-${appointment.id}`,
-      appointmentId: appointment.id,
-      patient: appointment.patient,
-      consultant: appointment.consultant,
-      unreadCount: 0,
-      updatedAt: new Date().toISOString(),
-    });
-    
-    // Load messages for this conversation
-    loadMessages(`conv-${appointment.id}`);
-    
-    return () => {
-      setCurrentConversation(null);
+    let mounted = true;
+
+    const initializeChat = async () => {
+      try {
+        setIsConnecting(true);
+
+        // 1. Connect socket if not already connected
+        if (!isSocketConnected) {
+          console.log('🔌 Connecting to socket...');
+          connectSocket();
+          // Wait a bit for socket to connect
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // 2. Get or create conversation
+        console.log('📝 Getting/creating conversation...');
+        const conversation = await chatService.getOrCreateConversation(
+          appointment.bookingId,
+          appointment.consultantId,
+          appointment.patientId
+        );
+
+        if (!mounted) return;
+
+        if (!conversation) {
+          throw new Error('Failed to create conversation');
+        }
+
+        console.log('✅ Conversation ready:', conversation.id);
+
+        // 3. Set current conversation and join room
+        await setCurrentConversation(conversation);
+
+        // 4. Join the conversation room via WebSocket
+        if (user) {
+          console.log('🚪 Joining conversation room...');
+          await socketService.joinConversation(
+            conversation.id,
+            user.id,
+            user.role as 'patient' | 'consultant'
+          );
+          console.log('✅ Joined conversation room');
+        }
+
+        // 5. Load existing messages
+        await loadMessages(conversation.id);
+
+        setIsConnecting(false);
+      } catch (error) {
+        console.error('❌ Chat initialization error:', error);
+        if (mounted) {
+          setIsConnecting(false);
+          Alert.alert(
+            'Connection Error',
+            'Failed to connect to chat. Please try again.',
+            [
+              {
+                text: 'Retry',
+                onPress: () => initializeChat(),
+              },
+              {
+                text: 'Go Back',
+                onPress: () => navigation.goBack(),
+                style: 'cancel',
+              },
+            ]
+          );
+        }
+      }
     };
-  }, [appointment.id]);
+
+    initializeChat();
+
+    // Cleanup
+    return () => {
+      mounted = false;
+      setCurrentConversation(null);
+      // Don't disconnect socket here as it might be used by other screens
+    };
+  }, [appointment.bookingId]);
+
+
+  useEffect(() => {
+    if (!currentConversation || messages.length === 0) return;
+
+    // Find unread messages from the other person
+    const unreadMessages = messages.filter(
+      msg => msg.senderId !== user?.id && msg.isRead !== false
+    );
+
+    if (unreadMessages.length > 0) {
+      const messageIds = unreadMessages.map(msg => msg.id);
+
+      // Mark as read after a short delay (simulate reading time)
+      const timer = setTimeout(() => {
+        useChatStore.getState().markAsRead(
+          currentConversation.id,
+          messageIds
+        );
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [messages, currentConversation?.id, user?.id]);
 
   const handleSend = () => {
     if (!inputText.trim()) return;
-    
+    if (!currentConversation) {
+      Alert.alert('Error', 'Not connected to conversation');
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     sendMessage(inputText.trim());
     setInputText('');
-    
+
     // Animate send button
     sendButtonScale.value = withSpring(0.8, {}, () => {
       sendButtonScale.value = withSpring(1);
     });
-    
+
     // Scroll to bottom
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
@@ -109,7 +222,7 @@ export function ChatScreen({ navigation, route }: Props) {
   };
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    const isOwn = item.senderId === 'current-user';
+    const isOwn = item.senderId === user?.id;
     const showAvatar =
       !isOwn &&
       (index === messages.length - 1 ||
@@ -125,14 +238,13 @@ export function ChatScreen({ navigation, route }: Props) {
       >
         {!isOwn && showAvatar && (
           <Avatar
-            name={`${appointment.patient.firstName} ${appointment.patient.lastName}`}
-            source={appointment.patient.avatar}
+            name={appointment.patientName}
             size="sm"
             style={styles.messageAvatar}
           />
         )}
         {!isOwn && !showAvatar && <View style={styles.avatarPlaceholder} />}
-        
+
         <View
           style={[
             styles.messageBubble,
@@ -160,17 +272,12 @@ export function ChatScreen({ navigation, route }: Props) {
             </Text>
             {isOwn && (
               <Ionicons
-                name={
-                  item.status === 'read'
-                    ? 'checkmark-done'
-                    : item.status === 'delivered'
-                    ? 'checkmark-done'
-                    : 'checkmark'
-                }
+                name={item.isRead ? 'checkmark-done' : 'checkmark'}
                 size={14}
-                color={item.status === 'read' ? '#60A5FA' : 'rgba(255,255,255,0.7)'}
+                color={item.isRead ? '#60A5FA' : 'rgba(255,255,255,0.7)'}
                 style={styles.readReceipt}
               />
+
             )}
           </View>
         </View>
@@ -180,15 +287,14 @@ export function ChatScreen({ navigation, route }: Props) {
 
   const renderTypingIndicator = () => {
     if (!isTyping) return null;
-    
+
     return (
       <Animated.View
         entering={FadeIn}
         style={[styles.messageContainer, styles.otherMessageContainer]}
       >
         <Avatar
-          name={`${appointment.patient.firstName} ${appointment.patient.lastName}`}
-          source={appointment.patient.avatar}
+          name={appointment.patientName}
           size="sm"
           style={styles.messageAvatar}
         />
@@ -214,6 +320,22 @@ export function ChatScreen({ navigation, route }: Props) {
     );
   };
 
+  // Show loading state while connecting
+  if (isConnecting) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background.primary }]}
+        edges={['top', 'bottom']}
+      >
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: theme.colors.text.secondary }]}>
+            Connecting to chat...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background.primary }]}
@@ -227,14 +349,13 @@ export function ChatScreen({ navigation, route }: Props) {
         >
           <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
         </Pressable>
-        
+
         <View style={styles.headerInfo}>
           <Avatar
-            name={`${appointment.patient.firstName} ${appointment.patient.lastName}`}
-            source={appointment.patient.avatar}
+            name={appointment.patientName}
             size="sm"
             showStatus
-            isOnline
+            isOnline={isSocketConnected}
           />
           <View style={styles.headerText}>
             <Text
@@ -243,19 +364,24 @@ export function ChatScreen({ navigation, route }: Props) {
                 { color: theme.colors.text.primary, fontFamily: theme.fontFamily.semiBold },
               ]}
             >
-              {appointment.patient.firstName} {appointment.patient.lastName}
+              {appointment.patientName}
             </Text>
             <Text
               style={[
                 styles.headerStatus,
-                { color: theme.colors.palette.success[500], fontFamily: theme.fontFamily.regular },
+                {
+                  color: isSocketConnected
+                    ? theme.colors.palette.success[500]
+                    : theme.colors.text.tertiary,
+                  fontFamily: theme.fontFamily.regular
+                },
               ]}
             >
-              Online
+              {isSocketConnected ? 'Online' : 'Connecting...'}
             </Text>
           </View>
         </View>
-        
+
         <Pressable
           style={[styles.headerButton, { backgroundColor: theme.colors.surface.secondary }]}
         >
@@ -267,7 +393,7 @@ export function ChatScreen({ navigation, route }: Props) {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.chatContainer}
-        keyboardVerticalOffset={90}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0} // ✅ Set to 0
       >
         <FlatList
           ref={flatListRef}
@@ -276,6 +402,7 @@ export function ChatScreen({ navigation, route }: Props) {
           renderItem={renderMessage}
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
+          keyboardDismissMode="interactive" // ✅ Add this
           ListFooterComponent={renderTypingIndicator}
           onContentSizeChange={() => {
             flatListRef.current?.scrollToEnd({ animated: false });
@@ -283,11 +410,11 @@ export function ChatScreen({ navigation, route }: Props) {
         />
 
         {/* Input Bar */}
-        <View style={[styles.inputBar, { backgroundColor: theme.colors.surface.primary }]}>
+        <View style={[styles.inputBar, { backgroundColor: theme.colors.surface.primary, paddingBottom: Math.max(insets.bottom, 80) }]}>
           <Pressable style={styles.attachButton}>
             <Ionicons name="attach" size={24} color={theme.colors.text.tertiary} />
           </Pressable>
-          
+
           <View
             style={[
               styles.inputContainer,
@@ -308,16 +435,18 @@ export function ChatScreen({ navigation, route }: Props) {
               ]}
               multiline
               maxLength={1000}
+              editable={isSocketConnected}
             />
           </View>
-          
+
           <Animated.View style={sendButtonAnimatedStyle}>
             <Pressable
               onPress={handleSend}
+              disabled={!isSocketConnected || !inputText.trim()}
               style={[
                 styles.sendButton,
                 {
-                  backgroundColor: inputText.trim()
+                  backgroundColor: inputText.trim() && isSocketConnected
                     ? theme.colors.accent
                     : theme.colors.surface.secondary,
                 },
@@ -326,7 +455,7 @@ export function ChatScreen({ navigation, route }: Props) {
               <Ionicons
                 name="send"
                 size={20}
-                color={inputText.trim() ? '#FFFFFF' : theme.colors.text.tertiary}
+                color={inputText.trim() && isSocketConnected ? '#FFFFFF' : theme.colors.text.tertiary}
               />
             </Pressable>
           </Animated.View>
@@ -339,6 +468,14 @@ export function ChatScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
   },
   header: {
     flexDirection: 'row',
@@ -439,12 +576,14 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   inputBar: {
+    display: 'flex',
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    paddingBottom: 24,
+    paddingTop: 12,
+    // paddingBottom: 15,
   },
+
   attachButton: {
     width: 44,
     height: 44,

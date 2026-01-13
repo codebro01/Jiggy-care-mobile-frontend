@@ -20,6 +20,7 @@ import { useAppTheme } from '../../theme';
 import { Avatar, Button, Card, StatusBadge } from '../../components';
 import { AppointmentsStackParamList } from '../../navigation/types';
 
+
 type AppointmentDetailScreenNavigationProp = NativeStackNavigationProp<
   AppointmentsStackParamList,
   'AppointmentDetail'
@@ -113,8 +114,8 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
         <Card variant="elevated" style={styles.patientCard}>
           <View style={styles.patientHeader}>
             <Avatar
-              name={`${appointment.patient.firstName} ${appointment.patient.lastName}`}
-              source={appointment.patient.avatar}
+              name={`${appointment.patientName}`}
+              // source={appointment.patientName}
               size="xl"
             />
             <View style={styles.patientInfo}>
@@ -124,16 +125,16 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
                   { color: theme.colors.text.primary, fontFamily: theme.fontFamily.bold },
                 ]}
               >
-                {appointment.patient.firstName} {appointment.patient.lastName}
+                {appointment.patientName}
               </Text>
-              <Text
+              {/* <Text
                 style={[
                   styles.patientEmail,
                   { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.regular },
                 ]}
               >
                 {appointment.patient.email}
-              </Text>
+              </Text> */}
               <StatusBadge status={appointment.status} style={styles.statusBadge} />
             </View>
           </View>
@@ -160,9 +161,13 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
               day: 'numeric',
             })}
           />
-          <InfoRow icon="time" label="Time" value={appointment.time} />
-          <InfoRow icon="hourglass" label="Duration" value={`${appointment.duration} minutes`} />
-          <InfoRow
+          <InfoRow icon="time" label="Time" value={new Date(appointment.date).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          })} />
+          <InfoRow icon="hourglass" label="Duration" value={`${appointment.duration} hour`} />
+          {/* <InfoRow
             icon={
               appointment.type === 'video'
                 ? 'videocam'
@@ -172,11 +177,27 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
             }
             label="Type"
             value={appointment.type.charAt(0).toUpperCase() + appointment.type.slice(1) + ' Consultation'}
-          />
+          /> */}
         </Card>
+             <View>
+          <Pressable
+            style={styles.startChatButton}
+            onPress={() => navigation.navigate('Chat', { appointment })}
+          >
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={14}
+              color={theme.colors.text.tertiary}
+            />
+            <Text style={styles.startChatButtonText}>Start Messaging</Text>
+          </Pressable>
+        
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
+              </View>
+
 
         {/* Notes */}
-        {appointment.notes && (
+        {/* {appointment.notes && (
           <>
             <Text
               style={[
@@ -197,7 +218,7 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
               </Text>
             </Card>
           </>
-        )}
+        )} */}
       </ScrollView>
 
       {/* Bottom Action */}
@@ -314,5 +335,25 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+
+
+
+  startChatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8, // Space between icon and text
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    padding: 16,
+    backgroundColor: '#71df90ff',
+    borderRadius: 12,
+    marginBottom: 24,
+    // ... other styles
+  },
+  startChatButtonText: {
+    fontSize: 14,
+  
   },
 });

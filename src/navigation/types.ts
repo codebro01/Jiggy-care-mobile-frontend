@@ -17,6 +17,7 @@ export type AuthStackParamList = {
 export type HomeStackParamList = {
     HomeScreen: undefined;
     Notifications: undefined;
+    ChatScreen: undefined
 };
 
 // Appointments Stack
@@ -29,7 +30,7 @@ export type AppointmentsStackParamList = {
 // Prescriptions Stack
 export type PrescriptionsStackParamList = {
     PrescriptionsList: undefined;
-    CreatePrescription: { patient?: Patient; appointmentId?: string };
+    CreatePrescription: { patient?: Patient; bookingId?: string };
     PrescriptionDetail: { prescriptionId: string };
 };
 

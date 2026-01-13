@@ -68,9 +68,12 @@ export function AppointmentsScreen({ navigation }: Props) {
 
   const filteredAppointments = getFilteredAppointments();
 
+  // console.log('filter', filteredAppointments)
+
   const renderFilterTab = ({ key, label }: { key: FilterType; label: string }) => {
     const isActive = filter === key;
-    
+
+
     return (
       <Pressable
         key={key}
@@ -109,8 +112,8 @@ export function AppointmentsScreen({ navigation }: Props) {
     >
       <View style={styles.appointmentHeader}>
         <Avatar
-          name={`${item.patient.firstName} ${item.patient.lastName}`}
-          source={item.patient.avatar}
+          name={`${item.patientName}`}
+          // source={item.patientName}
           size="lg"
           showStatus
           isOnline={item.status === 'confirmed'}
@@ -122,7 +125,7 @@ export function AppointmentsScreen({ navigation }: Props) {
               { color: theme.colors.text.primary, fontFamily: theme.fontFamily.semiBold },
             ]}
           >
-            {item.patient.firstName} {item.patient.lastName}
+            {item.patientName}
           </Text>
           <View style={styles.dateTimeRow}>
             <Ionicons name="calendar-outline" size={14} color={theme.colors.text.tertiary} />
@@ -147,36 +150,32 @@ export function AppointmentsScreen({ navigation }: Props) {
                 { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.regular },
               ]}
             >
-              {item.time} • {item.duration} min
+              {new Date(item.date).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+              })},
+            </Text>
+            <Text
+              style={[
+                styles.durationText,
+                { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.regular },
+              ]}
+            >
+              {item.duration} hour
             </Text>
           </View>
         </View>
         <StatusBadge status={item.status} />
       </View>
-      
+
       <View style={styles.appointmentFooter}>
-        <View style={styles.appointmentType}>
-          <Ionicons
-            name={
-              item.type === 'video'
-                ? 'videocam'
-                : item.type === 'audio'
-                ? 'call'
-                : 'chatbubble'
-            }
-            size={16}
-            color={theme.colors.accent}
-          />
-          <Text
-            style={[
-              styles.appointmentTypeText,
-              { color: theme.colors.text.secondary },
-            ]}
-          >
-            {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
-          </Text>
-        </View>
-        
+        <Ionicons name="chatbubble-ellipses-outline" size={14} color={theme.colors.text.tertiary} />
+
+        <Pressable onPress={() => navigation.navigate('Chat', { appointment: item })}>
+          Start Messaging
+        </Pressable>
+
         <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
       </View>
     </Card>
@@ -205,7 +204,7 @@ export function AppointmentsScreen({ navigation }: Props) {
       </View>
 
       {/* Appointments List */}
-      {isLoading && !refreshing ? (
+      {isLoading ? (
         <View style={styles.loadingContainer}>
           <SkeletonCard style={styles.skeletonCard} />
           <SkeletonCard style={styles.skeletonCard} />
@@ -214,7 +213,7 @@ export function AppointmentsScreen({ navigation }: Props) {
       ) : (
         <FlatList
           data={filteredAppointments}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.bookingId}
           renderItem={renderAppointment}
           contentContainerStyle={[
             styles.listContent,
@@ -313,6 +312,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   appointmentTypeText: {
+    fontSize: 13,
+    marginLeft: 6,
+  },
+  durationText: {
     fontSize: 13,
     marginLeft: 6,
   },
