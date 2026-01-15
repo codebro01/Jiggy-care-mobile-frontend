@@ -1,21 +1,25 @@
 {
   "project_info": {
-    "project_number": "360070513166",
-    "project_id": "jigicare",
-    "storage_bucket": "jigicare.firebasestorage.app"
+    "project_number": "797281065705",
+    "project_id": "jigicare-consultant",
+    "storage_bucket": "jigicare-consultant.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:360070513166:android:3c015d6893e3b5c922b25f",
+        "mobilesdk_app_id": "1:797281065705:android:9d96de56bd923b139aae78",
         "android_client_info": {
-          "package_name": "com.jigicare.app"
+          "package_name": "consultant.jigicare.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "326138021655-4tnvd4k857q8lipkcpu4k9ka73617cmg.apps.googleusercontent.com",
+          "client_type": 3
+        }],
       "api_key": [
         {
-          "current_key": "AIzaSyBTCsgzkHR6UpI28g0-kvEI4oXCYULMh-A"
+          "current_key": "AIzaSyDyc3ufxmG5xiX265MNwv1m8VghXJsPYoI"
         }
       ],
       "services": {

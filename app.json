@@ -22,7 +22,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.jigicare.app"
+      "package": "consultant.jigicare.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"

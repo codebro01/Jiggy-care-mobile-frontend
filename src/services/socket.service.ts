@@ -4,7 +4,7 @@ import { io, Socket } from 'socket.io-client';
 const BASE_URL = 'https://jiggy-care.onrender.com';
 
 class SocketService {
-  
+
 
     private socket: Socket | null = null;
     private listeners: Map<string, ((...args: any[]) => void)[]> = new Map();
@@ -34,6 +34,7 @@ class SocketService {
 
 
         this.removeAllListeners('receive_message');
+        this.removeAllListeners('new_message');
         this.removeAllListeners('messages_read');
 
         this.connectionPromise = new Promise((resolve, reject) => {
@@ -138,20 +139,29 @@ class SocketService {
         }
 
         console.log('👂 Listening for messages...');
+
+        // Listen for both 'receive_message' and 'new_message' events
         this.socket.on('receive_message', callback);
+        this.socket.on('new_message', callback);
 
         if (!this.listeners.has('receive_message')) {
             this.listeners.set('receive_message', []);
         }
         this.listeners.get('receive_message')!.push(callback);
+
+        if (!this.listeners.has('new_message')) {
+            this.listeners.set('new_message', []);
+        }
+        this.listeners.get('new_message')!.push(callback);
     }
 
     offMessage(callback: (message: any) => void) {
         if (!this.socket) return;
         this.socket.off('receive_message', callback);
+        this.socket.off('new_message', callback);
     }
 
-    markAsRead(data: {conversationId: string, messageIds: string[]}) {
+    markAsRead(data: { conversationId: string, messageIds: string[] }) {
         this.socket!.emit('mark_read', data);
     }
 
