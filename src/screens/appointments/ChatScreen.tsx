@@ -57,6 +57,7 @@ export function ChatScreen({ navigation, route }: Props) {
   const theme = useAppTheme();
   const { appointment } = route.params;
   const flatListRef = useRef<FlatList>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     messages,
@@ -67,6 +68,8 @@ export function ChatScreen({ navigation, route }: Props) {
     currentConversation,
     connectSocket,
     isSocketConnected,
+    startTyping,
+    stopTyping,
   } = useChatStore();
 
   const user = useAuthStore((state) => state.user);
@@ -78,9 +81,9 @@ export function ChatScreen({ navigation, route }: Props) {
   // Initialize conversation and WebSocket
   const insets = useSafeAreaInsets(); // ✅ Get safe area insets
 
-  
-  
-  
+
+
+
   useEffect(() => {
     let mounted = true;
 
@@ -187,11 +190,38 @@ export function ChatScreen({ navigation, route }: Props) {
     }
   }, [messages, currentConversation?.id, user?.id]);
 
+  const handleTextChange = (text: string) => {
+    setInputText(text);
+
+    // Emit typing start
+    if (text.length > 0) {
+      startTyping();
+
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // Set new timeout to stop typing after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        stopTyping();
+      }, 2000);
+    } else {
+      stopTyping();
+    }
+  };
+
   const handleSend = () => {
     if (!inputText.trim()) return;
     if (!currentConversation) {
       Alert.alert('Error', 'Not connected to conversation');
       return;
+    }
+
+    // Stop typing when sending
+    stopTyping();
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -288,53 +318,41 @@ export function ChatScreen({ navigation, route }: Props) {
   const renderTypingIndicator = () => {
     if (!isTyping) return null;
 
+    // Get first name from patient name
+    const firstName = appointment.patientName.split(' ')[0];
+
     return (
       <Animated.View
         entering={FadeIn}
-        style={[styles.messageContainer, styles.otherMessageContainer]}
+        style={styles.typingIndicatorContainer}
       >
-        <Avatar
-          name={appointment.patientName}
-          size="sm"
-          style={styles.messageAvatar}
-        />
-        <View
+        <Text
           style={[
-            styles.typingBubble,
-            { backgroundColor: theme.colors.surface.secondary },
+            styles.typingIndicatorText,
+            { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.regular },
           ]}
         >
-          <View style={styles.typingDots}>
-            {[0, 1, 2].map((i) => (
-              <Animated.View
-                key={i}
-                style={[
-                  styles.typingDot,
-                  { backgroundColor: theme.colors.text.tertiary },
-                ]}
-              />
-            ))}
-          </View>
-        </View>
+          {firstName} is typing...
+        </Text>
       </Animated.View>
     );
   };
 
   // Show loading state while connecting
-  if (isConnecting) {
-    return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.colors.background.primary }]}
-        edges={['top', 'bottom']}
-      >
-        <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: theme.colors.text.secondary }]}>
-            Connecting to chat...
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // if (isConnecting) {
+  //   return (
+  //     <SafeAreaView
+  //       style={[styles.container, { backgroundColor: theme.colors.background.primary }]}
+  //       edges={['top', 'bottom']}
+  //     >
+  //       <View style={styles.loadingContainer}>
+  //         <Text style={[styles.loadingText, { color: theme.colors.text.secondary }]}>
+  //           Connecting to {appointment.patientName}
+  //         </Text>
+  //       </View>
+  //     </SafeAreaView>
+  //   );
+  // }
 
   return (
     <SafeAreaView
@@ -426,7 +444,7 @@ export function ChatScreen({ navigation, route }: Props) {
           >
             <TextInput
               value={inputText}
-              onChangeText={setInputText}
+              onChangeText={handleTextChange}
               placeholder="Type a message..."
               placeholderTextColor={theme.colors.text.tertiary}
               style={[
@@ -574,6 +592,14 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  typingIndicatorContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  typingIndicatorText: {
+    fontSize: 13,
+    fontStyle: 'italic',
   },
   inputBar: {
     display: 'flex',

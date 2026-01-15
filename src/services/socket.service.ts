@@ -187,6 +187,65 @@ class SocketService {
         this.socket.off('messages_read', callback);
     }
 
+    // Typing indicators
+    emitTypingStart(data: { conversationId: string; userId: string; userType: string }) {
+        if (!this.socket) {
+            console.warn('⚠️ Socket not initialized');
+            return;
+        }
+        console.log('⌨️ Emitting typing_start:', data);
+        this.socket.emit('typing_start', data);
+    }
+
+    emitTypingStop(data: { conversationId: string; userId: string }) {
+        if (!this.socket) {
+            console.warn('⚠️ Socket not initialized');
+            return;
+        }
+        console.log('⌨️ Emitting typing_stop:', data);
+        this.socket.emit('typing_stop', data);
+    }
+
+    onUserTyping(callback: (data: { userId: string; userType: string }) => void) {
+        if (!this.socket) {
+            console.warn('⚠️ Socket not initialized');
+            return;
+        }
+
+        console.log('👂 Listening for user_typing...');
+        this.socket.on('user_typing', callback);
+
+        if (!this.listeners.has('user_typing')) {
+            this.listeners.set('user_typing', []);
+        }
+        this.listeners.get('user_typing')!.push(callback);
+    }
+
+    offUserTyping(callback: (data: any) => void) {
+        if (!this.socket) return;
+        this.socket.off('user_typing', callback);
+    }
+
+    onUserStoppedTyping(callback: (data: { userId: string }) => void) {
+        if (!this.socket) {
+            console.warn('⚠️ Socket not initialized');
+            return;
+        }
+
+        console.log('👂 Listening for user_stopped_typing...');
+        this.socket.on('user_stopped_typing', callback);
+
+        if (!this.listeners.has('user_stopped_typing')) {
+            this.listeners.set('user_stopped_typing', []);
+        }
+        this.listeners.get('user_stopped_typing')!.push(callback);
+    }
+
+    offUserStoppedTyping(callback: (data: any) => void) {
+        if (!this.socket) return;
+        this.socket.off('user_stopped_typing', callback);
+    }
+
     disconnect() {
         if (this.socket) {
             console.log('🔌 Disconnecting socket...');

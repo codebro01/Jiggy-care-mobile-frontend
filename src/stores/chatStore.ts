@@ -10,6 +10,7 @@ interface ChatState {
     currentConversation: Conversation | null;
     messages: Message[];
     isTyping: boolean;
+    typingUserId: string | null;
     isLoading: boolean;
     error: string | null;
     isSocketConnected: boolean;
@@ -23,6 +24,8 @@ interface ChatState {
     addMessage: (message: Message) => void;
     updateMessageStatus: (messageId: string, status: Message['isRead']) => void;
     setTyping: (isTyping: boolean) => void;
+    startTyping: () => void;
+    stopTyping: () => void;
     sendMessage: (content: string, type?: Message['type']) => Promise<void>;
     loadConversations: () => Promise<void>;
     loadMessages: (conversationId: string) => Promise<void>;
@@ -35,6 +38,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     currentConversation: null,
     messages: [],
     isTyping: false,
+    typingUserId: null,
     isLoading: false,
     error: null,
     isSocketConnected: false,
@@ -51,8 +55,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
             socketService.connect(tokens?.accessToken || '');
 
             // Listen for incoming messages
-            socketService.onMessage((message) => {
-                console.log('📨 Received message:', message);
+            socketService.onMessage((payload) => {
+                console.log('📨 Received message:', payload);
+
+                // Extract the actual message from the nested structure
+                // Backend sends: { conversation: {...}, message: {...} }
+                const message = payload.message || payload;
+
                 get().addMessage(message);
 
                 const { currentConversation } = get();
@@ -70,10 +79,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 set((state) => ({
                     messages: state.messages.map(msg =>
                         data.messageIds.includes(msg.id)
-                            ? { ...msg, status: 'read' }
+                            ? { ...msg, isRead: true }
                             : msg
                     ),
                 }));
+            });
+
+            // Listen for typing events
+            socketService.onUserTyping((data) => {
+                console.log('⌨️ User typing:', data);
+                if (data.userId !== user.id) {
+                    set({ isTyping: true, typingUserId: data.userId });
+                }
+            });
+
+            socketService.onUserStoppedTyping((data) => {
+                console.log('⌨️ User stopped typing:', data);
+                if (data.userId !== user.id) {
+                    set({ isTyping: false, typingUserId: null });
+                }
             });
 
             set({ isSocketConnected: true });
@@ -103,9 +127,34 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     setMessages: (messages) => set({ messages }),
 
-    addMessage: (message) => set((state) => ({
-        messages: [...state.messages, message],
-    })),
+    addMessage: (message) => set((state) => {
+        // Check for duplicates by ID
+        const existingById = state.messages.find(msg => msg.id === message.id);
+        if (existingById) {
+            console.log('⚠️ Duplicate message by ID, skipping:', message.id);
+            return state;
+        }
+
+        // Check for optimistic message duplicates (temp IDs)
+        // If we have a temp message with same content sent within 5 seconds, replace it
+        const tempMessage = state.messages.find(msg =>
+            msg.id.startsWith('temp-') &&
+            msg.content === message.content &&
+            msg.senderId === message.senderId &&
+            Math.abs(new Date(msg.createdAt).getTime() - new Date(message.createdAt).getTime()) < 5000
+        );
+
+        if (tempMessage) {
+            console.log('🔄 Replacing temp message with confirmed message');
+            return {
+                messages: state.messages.map(msg =>
+                    msg.id === tempMessage.id ? message : msg
+                ),
+            };
+        }
+
+        return { messages: [...state.messages, message] };
+    }),
 
     updateMessageStatus: (messageId, status) => set((state) => ({
         messages: state.messages.map(msg =>
@@ -114,6 +163,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
     })),
 
     setTyping: (isTyping) => set({ isTyping }),
+
+    startTyping: () => {
+        const { currentConversation } = get();
+        const user = useAuthStore.getState().user;
+
+        if (!currentConversation || !user) return;
+
+        socketService.emitTypingStart({
+            conversationId: currentConversation.id,
+            userId: user.id,
+            userType: user.role || 'consultant',
+        });
+    },
+
+    stopTyping: () => {
+        const { currentConversation } = get();
+        const user = useAuthStore.getState().user;
+
+        if (!currentConversation || !user) return;
+
+        socketService.emitTypingStop({
+            conversationId: currentConversation.id,
+            userId: user.id,
+        });
+    },
 
     sendMessage: async (content, type = 'text') => {
         const { currentConversation, addMessage, updateMessageStatus } = get();
@@ -145,7 +219,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 consultantId: user.role === 'consultant' ? user.id : currentConversation.consultantId,
                 patientId: user.role === 'patient' ? user.id : currentConversation.patientId,
                 content,
-                senderType:  'consultant',
+                senderType: 'consultant',
             });
 
             console.log('✅ Message sent successfully');

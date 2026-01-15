@@ -40,6 +40,7 @@ export function HomeScreen({ navigation }: Props) {
   } = useAppointmentsStore();
 
   const [refreshing, setRefreshing] = React.useState(false);
+  const [isLoadingHomeData, setIsLoadingHomeData] = React.useState(true);
   const [upcoming, setUpcoming] = React.useState(0);
   const [completed, setCompleted] = React.useState(0);
   const [averageRating, setAverageRating] = React.useState(0);
@@ -50,7 +51,10 @@ export function HomeScreen({ navigation }: Props) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadAppointments();
+    await Promise.all([
+      loadAppointments(),
+      fetchHomeScreenData(),
+    ]);
     setRefreshing(false);
   };
 
@@ -75,16 +79,16 @@ export function HomeScreen({ navigation }: Props) {
 
   const fetchHomeScreenData = async () => {
     try {
+      setIsLoadingHomeData(true);
       const response = await homeService.fetchHomeData();
-      // console.log(response)
       setUpcoming(response.data.noOfUpcomingBookings.total);
       setCompleted(response.data.noOfCompletedBookings.total);
       setAverageRating(response.data.averageRating.total);
-
     } catch (error) {
-      console.log(error)
-
+      console.log(error);
       console.error('Failed to fetch home screen data:', error);
+    } finally {
+      setIsLoadingHomeData(false);
     }
   };
 
@@ -213,23 +217,45 @@ export function HomeScreen({ navigation }: Props) {
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
-          {renderStatCard(
-            'Upcoming',
-            upcoming,
-            'calendar',
-            [theme.colors.palette.primary[500], theme.colors.palette.primary[400]]
-          )}
-          {renderStatCard(
-            'Completed',
-            completed,
-            'checkmark-circle',
-            [theme.colors.palette.success[500], theme.colors.palette.success[400]]
-          )}
-          {renderStatCard(
-            'Rating',
-            averageRating === null ? 0 : Number(averageRating).toFixed(1),
-            'star',
-            [theme.colors.palette.warning[500], theme.colors.palette.warning[400]]
+          {isLoadingHomeData ? (
+            <>
+              <View style={[styles.statCard, { backgroundColor: theme.colors.surface.secondary }]}>
+                <View style={[styles.statIconContainer, { backgroundColor: theme.colors.surface.elevated }]} />
+                <View style={{ width: 40, height: 24, backgroundColor: theme.colors.surface.elevated, borderRadius: 4, marginBottom: 4 }} />
+                <View style={{ width: 60, height: 12, backgroundColor: theme.colors.surface.elevated, borderRadius: 4 }} />
+              </View>
+              <View style={[styles.statCard, { backgroundColor: theme.colors.surface.secondary }]}>
+                <View style={[styles.statIconContainer, { backgroundColor: theme.colors.surface.elevated }]} />
+                <View style={{ width: 40, height: 24, backgroundColor: theme.colors.surface.elevated, borderRadius: 4, marginBottom: 4 }} />
+                <View style={{ width: 60, height: 12, backgroundColor: theme.colors.surface.elevated, borderRadius: 4 }} />
+              </View>
+              <View style={[styles.statCard, { backgroundColor: theme.colors.surface.secondary }]}>
+                <View style={[styles.statIconContainer, { backgroundColor: theme.colors.surface.elevated }]} />
+                <View style={{ width: 40, height: 24, backgroundColor: theme.colors.surface.elevated, borderRadius: 4, marginBottom: 4 }} />
+                <View style={{ width: 60, height: 12, backgroundColor: theme.colors.surface.elevated, borderRadius: 4 }} />
+              </View>
+            </>
+          ) : (
+            <>
+              {renderStatCard(
+                'Upcoming',
+                upcoming,
+                'calendar',
+                [theme.colors.palette.primary[500], theme.colors.palette.primary[400]]
+              )}
+              {renderStatCard(
+                'Completed',
+                completed,
+                'checkmark-circle',
+                [theme.colors.palette.success[500], theme.colors.palette.success[400]]
+              )}
+              {renderStatCard(
+                'Rating',
+                averageRating === null ? 0 : Number(averageRating).toFixed(1),
+                'star',
+                [theme.colors.palette.warning[500], theme.colors.palette.warning[400]]
+              )}
+            </>
           )}
         </View>
 
