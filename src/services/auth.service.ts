@@ -27,6 +27,26 @@ export const authService = {
             throw error;
         }
     },
+    refreshToken: async () => {
+        try {
+            const refreshToken = await tokenManager.getRefreshToken();
+
+            const response = await api.patch<any>(
+                '/auth/refresh',
+                {},
+                {
+                    headers: {
+                        'x-refresh-token': refreshToken ?? '',
+                    },
+                }
+            );
+
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
 
     // Logout   
     logout: async (): Promise<void> => {

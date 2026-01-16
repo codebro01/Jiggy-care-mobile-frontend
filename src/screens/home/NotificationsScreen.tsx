@@ -1,15 +1,25 @@
-/**
- * Jiggy Care Mobile - Notifications Screen
- */
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Notifications from 'expo-notifications';
+
 import { useAppTheme } from '../../theme';
 import { HomeStackParamList } from '../../navigation/types';
 import { Notification } from '../../types';
+import { useNotificationStore } from '../../stores/notificationStore';
+import { notificationService } from '../../services/notification.service';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 type NotificationsScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'Notifications'>;
 
@@ -17,39 +27,76 @@ interface Props {
   navigation: NotificationsScreenNavigationProp;
 }
 
-// Mock notifications
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    title: 'New Appointment',
-    body: 'Victor Damilola has booked an appointment for tomorrow at 10:00 AM',
-    type: 'appointment',
-    referenceId: 'a1',
-    read: false,
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: '2',
-    title: 'Message Received',
-    body: 'You have a new message from Sarah Williams',
-    type: 'message',
-    referenceId: 'c1',
-    read: false,
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: '3',
-    title: 'Appointment Reminder',
-    body: 'You have an appointment with Michael Brown in 1 hour',
-    type: 'appointment',
-    referenceId: 'a2',
-    read: true,
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
-
 export function NotificationsScreen({ navigation }: Props) {
   const theme = useAppTheme();
+  const { notifications, setNotifications, unreadCount } = useNotificationStore();
+
+  useEffect(() => {
+    let eventSource: any;
+
+    const setupStream = async () => {
+      try {
+        // Initial fetch
+        const initialRes = await notificationService.getNotifications();
+        if (initialRes.data) { // Assuming response structure, user didn't specify getNotifications response exactly but likely array or {data: []}
+          // Adapting to likely structure or array based on backend sample which returns { data: { notifications: [] } } for stream but maybe array for REST.
+          // Safe bet: check if array or property.
+          const initialData = Array.isArray(initialRes.data) ? initialRes.data : initialRes.data.notifications || [];
+          setNotifications(initialData);
+        }
+
+        // Start Stream
+        eventSource = await notificationService.notificationStream((event) => {
+          if (event.type === 'message' && event.data) {
+            try {
+              const parsed = JSON.parse(event.data);
+              // Backend sends: { data: { notifications: [], count: n } }
+              const newNotifications = parsed.data?.notifications || [];
+
+              // Check for new notifications to trigger push
+              // Simple check: if we have more notifications than before, or check IDs.
+              // Since we might have read status changes, finding *new* unread items is key.
+              // Logic: Find items in newNotifications not present in current notifications (by ID).
+              // Access current state via store or ref? Store updates might be async/batched.
+              // Better: usePrescriptionsStore.getState().notifications for comparison? Yes.
+
+              const currentNotifs = useNotificationStore.getState().notifications;
+              const newItems = newNotifications.filter((n: Notification) =>
+                !currentNotifs.some(existing => existing.id === n.id)
+              );
+
+              if (newItems.length > 0) {
+                newItems.forEach((item: Notification) => {
+                  Notifications.scheduleNotificationAsync({
+                    content: {
+                      title: item.title,
+                      body: item.body,
+                      data: { id: item.id, type: item.type },
+                    },
+                    trigger: null, // Show immediately
+                  });
+                });
+              }
+
+              setNotifications(newNotifications);
+            } catch (e) {
+              console.error('Error parsing SSE message', e);
+            }
+          }
+        });
+      } catch (err) {
+        console.error('Failed to setup notification stream', err);
+      }
+    };
+
+    setupStream();
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, []);
 
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
@@ -81,8 +128,8 @@ export function NotificationsScreen({ navigation }: Props) {
           backgroundColor: item.read
             ? theme.colors.surface.primary
             : theme.isDark
-            ? theme.colors.palette.primary[900]
-            : theme.colors.palette.primary[50],
+              ? theme.colors.palette.primary[900]
+              : theme.colors.palette.primary[50],
         },
       ]}
     >
@@ -102,7 +149,7 @@ export function NotificationsScreen({ navigation }: Props) {
           color={theme.colors.accent}
         />
       </View>
-      
+
       <View style={styles.notificationContent}>
         <Text
           style={[
@@ -139,7 +186,7 @@ export function NotificationsScreen({ navigation }: Props) {
           {getTimeAgo(item.createdAt)}
         </Text>
       </View>
-      
+
       {!item.read && (
         <View style={[styles.unreadDot, { backgroundColor: theme.colors.accent }]} />
       )}
@@ -171,7 +218,7 @@ export function NotificationsScreen({ navigation }: Props) {
       </View>
 
       <FlatList
-        data={mockNotifications}
+        data={notifications}
         keyExtractor={(item) => item.id}
         renderItem={renderNotification}
         contentContainerStyle={styles.listContent}

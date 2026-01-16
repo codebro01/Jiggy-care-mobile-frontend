@@ -97,18 +97,39 @@ export interface Medication {
     instructions?: string;
 }
 
+export type FrequencyType =
+    | 'once_daily'
+    | 'twice_daily'
+    | 'thrice_daily'
+    | 'four_times_daily'
+    | 'five_times_daily'
+    | 'often';
+
 export interface Prescription {
-    id: string;
+    id: string
     patientId: string;
-    patient: Patient;
+    patientName: string; 
     consultantId: string;
-    bookingId?: string;
-    medications: Medication[];
-    diagnosis?: string;
-    notes?: string;
-    createdAt: string;
-    updatedAt: string;
+    name: string;
+    dosage: number;
+    mg: number;
+    frequency: FrequencyType;
+    pillsRemaining: number;
+    prescribedBy: string | null;
+    totalPills: number;
+    startDate: string; 
+    createdAt: string 
 }
+
+export interface CreatePrescription {
+    patientId: string;
+    name: string;
+    dosage: number;
+    mg: number;
+    frequency: string;
+    startDate: string;
+}
+
 
 // Notification Types
 export interface Notification {

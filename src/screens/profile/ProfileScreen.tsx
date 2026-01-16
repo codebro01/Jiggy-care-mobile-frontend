@@ -384,7 +384,7 @@ export function ProfileScreen({ navigation }: Props) {
           />
         </Card>
 
-        <Text
+        {/* <Text
           style={[
             styles.sectionTitle,
             { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.semiBold },
@@ -406,7 +406,7 @@ export function ProfileScreen({ navigation }: Props) {
             hasChevron={false}
             onPress={logout}
           />
-        </Card>
+        </Card> */}
       </ScrollView>
     </SafeAreaView>
   );

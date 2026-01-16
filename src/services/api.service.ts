@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios,  { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 // Base API URL
 export const BASE_URL = 'https://jiggy-care.onrender.com/api/v1';
@@ -97,7 +97,7 @@ apiClient.interceptors.response.use(
         const originalRequest = error.config;
 
         // If error is not 401 or request is already retried, reject
-        if (error.response?.status !== 401 || originalRequest._retry) {
+        if (error.response?.error !== "Unauthorized" || originalRequest._retry) {
             return Promise.reject(error);
         }
 
@@ -130,7 +130,7 @@ apiClient.interceptors.response.use(
 
         try {
             // Call refresh endpoint
-            const response = await axios.post(
+            const response = await axios.patch(
                 `${BASE_URL}/auth/refresh`,
                 {},
                 {

@@ -23,6 +23,8 @@ import { HomeStackParamList } from '../../navigation/types';
 import { Appointment } from '../../types';
 import { homeService } from '../../services/home.service';
 import { appointmentService } from '../../services/appointment.service';
+import { useNotificationStore } from '../../stores/notificationStore';
+import * as Notifications from 'expo-notifications';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeScreen'>;
 
@@ -38,6 +40,18 @@ export function HomeScreen({ navigation }: Props) {
     isLoading,
     loadAppointments
   } = useAppointmentsStore();
+
+  const unreadCount = useNotificationStore(state => state.unreadCount);
+
+  useEffect(() => {
+    const requestPermissions = async () => {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('Notification permission denied');
+      }
+    };
+    requestPermissions();
+  }, []);
 
   const [refreshing, setRefreshing] = React.useState(false);
   const [isLoadingHomeData, setIsLoadingHomeData] = React.useState(true);
@@ -211,7 +225,7 @@ export function HomeScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('Notifications')}
           >
             <Ionicons name="notifications-outline" size={24} color={theme.colors.text.primary} />
-            <Badge count={3} style={styles.notificationBadge} />
+            {unreadCount > 0 && <Badge count={unreadCount} style={styles.notificationBadge} />}
           </Pressable>
         </View>
 

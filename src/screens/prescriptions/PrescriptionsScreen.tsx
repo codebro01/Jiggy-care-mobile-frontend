@@ -3,7 +3,7 @@
  * List of prescriptions with ability to create new ones
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,8 @@ import { useAppTheme } from '../../theme';
 import { Card, Avatar, EmptyState } from '../../components';
 import { PrescriptionsStackParamList } from '../../navigation/types';
 import { Prescription } from '../../types';
+import { usePrescriptionsStore } from '../../stores/prescriptionsStore';
+import { prescriptionService } from '../../services/prescription.service';
 
 type PrescriptionsScreenNavigationProp = NativeStackNavigationProp<
   PrescriptionsStackParamList,
@@ -28,48 +30,34 @@ interface Props {
   navigation: PrescriptionsScreenNavigationProp;
 }
 
-// Mock data
-const mockPrescriptions: Prescription[] = [
-  {
-    id: 'rx1',
-    patientId: 'p1',
-    patient: {
-      id: 'p1',
-      firstName: 'Victor',
-      lastName: 'Damilola',
-      email: 'victor@example.com',
-    },
-    consultantId: 'c1',
-    bookingId: 'a3',
-    medications: [
-      {
-        name: 'Paracetamol',
-        dosage: '500mg',
-        frequency: 'Twice daily',
-        duration: '5 days',
-        instructions: 'Take after meals',
-      },
-      {
-        name: 'Vitamin C',
-        dosage: '1000mg',
-        frequency: 'Once daily',
-        duration: '10 days',
-      },
-    ],
-    diagnosis: 'Common cold with mild fever',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
+
 
 export function PrescriptionsScreen({ navigation }: Props) {
   const theme = useAppTheme();
+
+  const prescriptions = usePrescriptionsStore((state) => state.prescriptions);
+
+  useEffect(() => {
+    fetchPrescriptions();
+  }, []);
+
+  const fetchPrescriptions = async () => {
+    try {
+      const response = await prescriptionService.findAll();
+      usePrescriptionsStore.setState({ prescriptions: response.data });
+
+      console.log(response);
+    } catch (error) {
+      console.log(error)
+      throw error;
+    }
+  };
 
   const renderPrescription = ({ item }: { item: Prescription }) => (
     <Card variant="elevated" style={styles.prescriptionCard}>
       <View style={styles.prescriptionHeader}>
         <Avatar
-          name={`${item.patient.firstName} ${item.patient.lastName}`}
+          name={`${item.patientName}`}
           size="md"
         />
         <View style={styles.prescriptionInfo}>
@@ -79,7 +67,7 @@ export function PrescriptionsScreen({ navigation }: Props) {
               { color: theme.colors.text.primary, fontFamily: theme.fontFamily.semiBold },
             ]}
           >
-            {item.patient.firstName} {item.patient.lastName}
+            {item.patientName}
           </Text>
           <Text
             style={[
@@ -97,26 +85,6 @@ export function PrescriptionsScreen({ navigation }: Props) {
         <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
       </View>
 
-      {item.diagnosis && (
-        <View style={[styles.diagnosisContainer, { backgroundColor: theme.colors.surface.secondary }]}>
-          <Text
-            style={[
-              styles.diagnosisLabel,
-              { color: theme.colors.text.tertiary, fontFamily: theme.fontFamily.medium },
-            ]}
-          >
-            Diagnosis
-          </Text>
-          <Text
-            style={[
-              styles.diagnosisText,
-              { color: theme.colors.text.primary, fontFamily: theme.fontFamily.regular },
-            ]}
-          >
-            {item.diagnosis}
-          </Text>
-        </View>
-      )}
 
       <View style={styles.medicationsContainer}>
         <Text
@@ -125,39 +93,53 @@ export function PrescriptionsScreen({ navigation }: Props) {
             { color: theme.colors.text.tertiary, fontFamily: theme.fontFamily.medium },
           ]}
         >
-          Medications ({item.medications.length})
+          Name ({item.name})
         </Text>
-        {item.medications.slice(0, 2).map((med, index) => (
-          <View key={index} style={styles.medicationItem}>
-            <Ionicons name="medical" size={16} color={theme.colors.accent} />
-            <Text
-              style={[
-                styles.medicationName,
-                { color: theme.colors.text.primary, fontFamily: theme.fontFamily.medium },
-              ]}
-            >
-              {med.name}
-            </Text>
-            <Text
-              style={[
-                styles.medicationDosage,
-                { color: theme.colors.text.secondary },
-              ]}
-            >
-              {med.dosage}
-            </Text>
-          </View>
-        ))}
-        {item.medications.length > 2 && (
-          <Text
-            style={[
-              styles.moreText,
-              { color: theme.colors.accent },
-            ]}
-          >
-            +{item.medications.length - 2} more
-          </Text>
-        )}
+        <Text
+          style={[
+            styles.medicationsLabel,
+            { color: theme.colors.text.tertiary, fontFamily: theme.fontFamily.medium },
+          ]}
+        >
+          Dosage ({item.dosage})
+        </Text>
+
+        <Text
+          style={[
+            styles.medicationsLabel,
+            { color: theme.colors.text.tertiary, fontFamily: theme.fontFamily.medium },
+          ]}
+        >
+          Mg ({item.mg})
+        </Text>
+
+        <Text
+          style={[
+            styles.medicationsLabel,
+            { color: theme.colors.text.tertiary, fontFamily: theme.fontFamily.medium },
+          ]}
+        >
+          Frequency ({item.frequency})
+        </Text>
+
+        <Text
+          style={[
+            styles.medicationsLabel,
+            { color: theme.colors.text.tertiary, fontFamily: theme.fontFamily.medium },
+          ]}
+        >
+          Pills Remaining ({item.pillsRemaining})
+        </Text>
+
+        {/* <Text
+          style={[
+            styles.medicationsLabel,
+            { color: theme.colors.text.tertiary, fontFamily: theme.fontFamily.medium },
+          ]}
+        >
+          Prescribed By ({item.prescribedBy})
+        </Text> */}
+
       </View>
     </Card>
   );
@@ -186,12 +168,12 @@ export function PrescriptionsScreen({ navigation }: Props) {
       </View>
 
       <FlatList
-        data={mockPrescriptions}
+        data={prescriptions}
         keyExtractor={(item) => item.id}
         renderItem={renderPrescription}
         contentContainerStyle={[
           styles.listContent,
-          mockPrescriptions.length === 0 && styles.emptyListContent,
+          prescriptions.length === 0 && styles.emptyListContent,
         ]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
