@@ -396,7 +396,7 @@ export function ProfileScreen({ navigation }: Props) {
           <SettingItem icon="help-circle-outline" label="Help & Support" />
           <SettingItem icon="document-text-outline" label="Terms of Service" />
           <SettingItem icon="information-circle-outline" label="About" value="v1.0.0" />
-        </Card>
+        </Card>*/}
 
         <Card variant="outlined" style={[styles.settingsCard, styles.logoutCard]}>
           <SettingItem
@@ -406,7 +406,7 @@ export function ProfileScreen({ navigation }: Props) {
             hasChevron={false}
             onPress={logout}
           />
-        </Card> */}
+        </Card> 
       </ScrollView>
     </SafeAreaView>
   );

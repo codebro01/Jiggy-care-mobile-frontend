@@ -26,7 +26,7 @@ export const notificationService = {
 
     getNotifications: async () => {
         try {
-            const response = await api.get<any>('/notification/filter');
+            const response = await api.get<any>('/notification/all');
             return response;
         } catch (error) {
             throw error;

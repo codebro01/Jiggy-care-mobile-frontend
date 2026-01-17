@@ -31,6 +31,8 @@ export function NotificationsScreen({ navigation }: Props) {
   const theme = useAppTheme();
   const { notifications, setNotifications, unreadCount } = useNotificationStore();
 
+
+console.log(notifications)
   useEffect(() => {
     let eventSource: any;
 

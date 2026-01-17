@@ -173,7 +173,9 @@ export function AppointmentsScreen({ navigation }: Props) {
         <Ionicons name="chatbubble-ellipses-outline" size={14} color={theme.colors.text.tertiary} />
 
         <Pressable onPress={() => navigation.navigate('Chat', { appointment: item })}>
-          Start Messaging
+          <Text style={{ color: theme.colors.text.primary }}>
+            Start Messaging
+          </Text>
         </Pressable>
 
         <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
