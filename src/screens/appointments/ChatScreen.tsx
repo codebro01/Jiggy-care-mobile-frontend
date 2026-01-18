@@ -429,9 +429,9 @@ export function ChatScreen({ navigation, route }: Props) {
 
         {/* Input Bar */}
         <View style={[styles.inputBar, { backgroundColor: theme.colors.surface.primary, paddingBottom: Math.max(insets.bottom, 80) }]}>
-          <Pressable style={styles.attachButton}>
+          {/* <Pressable style={styles.attachButton}>
             <Ionicons name="attach" size={24} color={theme.colors.text.tertiary} />
-          </Pressable>
+          </Pressable> */}
 
           <View
             style={[

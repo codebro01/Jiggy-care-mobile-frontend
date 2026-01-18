@@ -135,10 +135,9 @@ export interface CreatePrescription {
 export interface Notification {
     id: string;
     title: string;
-    body: string;
-    type: 'appointment' | 'message' | 'prescription' | 'general';
-    referenceId?: string;
-    read: boolean;
+    message: string;
+    category: 'booking';
+    status: string;
     createdAt: string;
 }
 

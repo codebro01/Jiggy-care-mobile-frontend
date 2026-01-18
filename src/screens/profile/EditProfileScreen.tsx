@@ -22,7 +22,9 @@ import { useAuthStore } from '../../stores';
 import { Avatar, Button, Input } from '../../components';
 import { ProfileStackParamList } from '../../navigation/types';
 import { userService } from '@/services/user.service';
+import { uploadService } from '@/services/upload.service';
 import { useAlert, Alert as AlertComponent } from '@/components/alert';
+import * as ImagePicker from 'expo-image-picker';
 
 
 type EditProfileScreenNavigationProp = NativeStackNavigationProp<
@@ -93,13 +95,69 @@ export function EditProfileScreen({ navigation }: Props) {
       const reponse = await userService.updateProfile(data);
       // console.log(reponse)
 
-      setUser({...user, ...reponse.data})
+      setUser({ ...user, ...reponse.data })
       showSuccess('Profile updated successfully', 'Success');
       setIsLoading(false);
       navigation.goBack();
     } catch (error: any) {
       console.log(error)
       showError(`${error.message || error}`, 'Error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleImagePick = async () => {
+    try {
+      // 1. Pick Image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setIsLoading(true);
+        const asset = result.assets[0];
+
+        // 2. Prepare FormData
+        const formData = new FormData();
+        const filename = asset.uri.split('/').pop() || 'upload.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+        formData.append('file', {
+          uri: asset.uri,
+          name: filename,
+          type,
+        } as any);
+
+        // 3. Upload File
+        const uploadResponse = await uploadService.uploadFile(formData);
+
+        // Assuming uploadResponse.data contains the secure_url based on standard axios usage in this project
+        // Or if uploadService extracts data, adjust accordingly. 
+        // User said it returns { secure_url: 'url', public_id: 'public' }
+        const secureUrl = uploadResponse.data?.secure_url || uploadResponse.secure_url;
+
+        if (!secureUrl) {
+          throw new Error('Failed to get secure URL from upload');
+        }
+
+        // 4. Update Profile Picture
+        await userService.updateProfilePicture({ dp: secureUrl });
+
+        // 5. Update Local State
+        if (user) {
+          setUser({ ...user, avatar: secureUrl });
+        }
+
+        showSuccess('Profile picture updated successfully', 'Success');
+      }
+    } catch (error: any) {
+      console.log('Image upload error:', error);
+      showError(error.message || 'Failed to update profile picture', 'Error');
     } finally {
       setIsLoading(false);
     }
@@ -145,6 +203,7 @@ export function EditProfileScreen({ navigation }: Props) {
             />
             <Pressable
               style={[styles.changePhotoButton, { backgroundColor: theme.colors.accent }]}
+              onPress={handleImagePick}
             >
               <Ionicons name="camera" size={16} color="#FFFFFF" />
             </Pressable>
