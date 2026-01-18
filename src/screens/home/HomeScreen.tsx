@@ -119,6 +119,12 @@ export function HomeScreen({ navigation }: Props) {
 
   // console.log('appointments', appointments)
 
+  const handleViewAllAppointments = () => {
+    // Navigate to the Appointments tab
+    // We use getParent() to access the TabNavigator
+    navigation.getParent()?.navigate('Appointments' as any);
+  };
+
   const renderStatCard = (
     title: string,
     value: number | string,
@@ -145,46 +151,84 @@ export function HomeScreen({ navigation }: Props) {
       variant="elevated"
       style={styles.appointmentCard}
     >
-      <View style={styles.appointmentHeader}>
-        <Avatar
-          name={`${appointment.patientName}`}
-          size="md"
-          showStatus
-          isOnline={appointment.status === 'confirmed'}
-        />
-        <View style={styles.appointmentInfo}>
-          <Text
-            style={[
-              styles.patientName,
-              { color: theme.colors.text.primary, fontFamily: theme.fontFamily.semiBold },
-            ]}
-          >
-            {appointment.patientName}
-          </Text>
-          <Text
-            style={[
-              styles.appointmentTime,
-              { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.regular },
-            ]}
-          >
-            {new Date(appointment.date).toLocaleDateString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-            })}{' '}
-            at {new Date(appointment.date).toLocaleTimeString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-              hour12: true,
-            })}
-
-
-          </Text>
+      <View style={styles.cardHeader}>
+        <View style={styles.userInfoContainer}>
+          <Avatar
+            name={`${appointment.patientName}`}
+            size="lg"
+            showStatus
+            isOnline={appointment.status === 'confirmed'}
+          />
+          <View style={styles.appointmentInfo}>
+            <Text
+              style={[
+                styles.patientName,
+                { color: theme.colors.text.primary, fontFamily: theme.fontFamily.bold },
+              ]}
+            >
+              {appointment.patientName}
+            </Text>
+            <Text
+              style={[
+                styles.patientLabel,
+                { color: theme.colors.text.tertiary, fontFamily: theme.fontFamily.medium }
+              ]}
+            >
+              Patient
+            </Text>
+          </View>
         </View>
         <StatusBadge status={appointment.status} />
       </View>
 
+      <View style={[styles.divider, { backgroundColor: theme.colors.border.secondary }]} />
 
+      <View style={styles.appointmentDetails}>
+        <View style={styles.detailRow}>
+          <View style={[styles.iconContainer, { backgroundColor: theme.colors.palette.primary[50] }]}>
+            <Ionicons name="calendar-outline" size={20} color={theme.colors.palette.primary[500]} />
+          </View>
+          <View style={styles.detailTextContainer}>
+            <Text style={[styles.detailLabel, { color: theme.colors.text.tertiary, fontFamily: theme.fontFamily.medium }]}>Date</Text>
+            <Text style={[styles.detailValue, { color: theme.colors.text.primary, fontFamily: theme.fontFamily.semiBold }]}>
+              {new Date(appointment.date).toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.detailRow}>
+          <View style={[styles.iconContainer, { backgroundColor: theme.colors.palette.warning[50] }]}>
+            <Ionicons name="time-outline" size={20} color={theme.colors.palette.warning[500]} />
+          </View>
+          <View style={styles.detailTextContainer}>
+            <Text style={[styles.detailLabel, { color: theme.colors.text.tertiary, fontFamily: theme.fontFamily.medium }]}>Time</Text>
+            <Text style={[styles.detailValue, { color: theme.colors.text.primary, fontFamily: theme.fontFamily.semiBold }]}>
+              {new Date(appointment.date).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+              })}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.cardFooter}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.actionButton,
+            { backgroundColor: theme.colors.surface.secondary, opacity: pressed ? 0.8 : 1 }
+          ]}
+          onPress={handleViewAllAppointments}
+        >
+          <Text style={[styles.actionButtonText, { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.semiBold }]}>View Details</Text>
+          <Ionicons name="chevron-forward" size={16} color={theme.colors.text.secondary} />
+        </Pressable>
+      </View>
     </Card>
   );
 
@@ -285,7 +329,7 @@ export function HomeScreen({ navigation }: Props) {
             >
               Upcoming Appointments
             </Text>
-            <Pressable>
+            <Pressable onPress={handleViewAllAppointments}>
               <Text style={[styles.seeAll, { color: theme.colors.accent }]}>
                 See all
               </Text>
@@ -381,7 +425,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 40,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 2,
@@ -407,36 +451,80 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   appointmentCard: {
-    marginBottom: 12,
+    marginBottom: 20,
+    padding: 0,
+    borderRadius: 24,
   },
-  appointmentHeader: {
+  cardHeader: {
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  userInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   appointmentInfo: {
+    marginLeft: 16,
     flex: 1,
-    marginLeft: 12,
   },
   patientName: {
-    fontSize: 16,
+    fontSize: 18,
+    marginBottom: 4,
   },
-  appointmentTime: {
-    fontSize: 13,
-    marginTop: 2,
+  patientLabel: {
+    fontSize: 14,
   },
-  appointmentFooter: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
+  divider: {
+    height: 1,
+    width: '100%',
+    opacity: 0.5,
   },
-  appointmentType: {
+  appointmentDetails: {
+    padding: 16,
+    paddingTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
-  appointmentTypeText: {
-    fontSize: 13,
-    marginLeft: 6,
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  detailTextContainer: {
+    justifyContent: 'center',
+  },
+  detailLabel: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 14,
+  },
+  cardFooter: {
+    padding: 12,
+    paddingTop: 0,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  actionButtonText: {
+    fontSize: 14,
   },
   emptyState: {
     alignItems: 'center',
