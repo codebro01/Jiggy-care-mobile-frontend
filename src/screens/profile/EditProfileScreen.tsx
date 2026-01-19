@@ -2,7 +2,7 @@
  * Jiggy Care Mobile - Edit Profile Screen
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,12 +19,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppTheme } from '../../theme';
 import { useAuthStore } from '../../stores';
-import { Avatar, Button, Input } from '../../components';
+import { Avatar, Button, Input, Dropdown } from '../../components';
 import { ProfileStackParamList } from '../../navigation/types';
 import { userService } from '@/services/user.service';
 import { uploadService } from '@/services/upload.service';
 import { useAlert, Alert as AlertComponent } from '@/components/alert';
 import * as ImagePicker from 'expo-image-picker';
+import { specialityService } from '@/services/speciality.service';
 
 
 type EditProfileScreenNavigationProp = NativeStackNavigationProp<
@@ -59,6 +60,7 @@ export function EditProfileScreen({ navigation }: Props) {
   const [showWorkingHoursEditor, setShowWorkingHoursEditor] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { alert, showSuccess, showError, showWarning, hideAlert } = useAlert();
+  const [specialities, setSpecialities] = useState([]);
 
 
 
@@ -86,7 +88,7 @@ export function EditProfileScreen({ navigation }: Props) {
         gender,
         about,
         languages: languages as string[],
-        // speciality,
+        speciality,
         certification: certification as string[],
         yrsOfExperience: Number(yrsOfExperience),
         workingHours,
@@ -162,6 +164,28 @@ export function EditProfileScreen({ navigation }: Props) {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+
+    const getSpecialities = async () => {
+      try {
+        const response = await specialityService.getSpecialities();
+        const specs = response.data;
+        setSpecialities(specs);
+
+        // If current speciality is a name, try to find matching ID
+        if (speciality && !specs.find((s: any) => s.id === speciality)) {
+          const match = specs.find((s: any) => s.name === speciality);
+          if (match) {
+            setSpeciality(match.id);
+          }
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    getSpecialities();
+  }, [])
 
   return (
     <SafeAreaView
@@ -322,11 +346,12 @@ export function EditProfileScreen({ navigation }: Props) {
                   leftIcon="information-circle-outline"
                 />
 
-                <Input
+                <Dropdown
                   label="Specialization"
-                  placeholder="e.g., Cardiology, Pediatrics"
+                  placeholder="Select Specialization"
+                  data={specialities?.map((s: any) => ({ label: s.name, value: s.id })) || []}
                   value={speciality}
-                  onChangeText={setSpeciality}
+                  onSelect={(item) => setSpeciality(item.value)}
                   leftIcon="medical-outline"
                 />
 

@@ -9,3 +9,4 @@ export { Avatar } from './Avatar';
 export { Badge, StatusBadge } from './Badge';
 export { Skeleton, SkeletonText, SkeletonCard } from './Skeleton';
 export { EmptyState } from './EmptyState';
+export { Dropdown } from './Dropdown';
