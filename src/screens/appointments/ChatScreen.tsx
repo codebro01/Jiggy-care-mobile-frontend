@@ -94,9 +94,7 @@ export function ChatScreen({ navigation, route }: Props) {
         // 1. Connect socket if not already connected
         if (!isSocketConnected) {
           console.log('🔌 Connecting to socket...');
-          connectSocket();
-          // Wait a bit for socket to connect
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await connectSocket();
         }
 
         // 2. Get or create conversation
@@ -540,6 +538,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   messageContainer: {
+    width: '100%',
     flexDirection: 'row',
     marginBottom: 8,
     alignItems: 'flex-end',

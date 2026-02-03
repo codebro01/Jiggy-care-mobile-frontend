@@ -75,9 +75,9 @@ export function TabNavigator() {
           position: 'absolute',
           height: theme.tabBar.height,
           paddingTop: 8,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 12,
-          backgroundColor: theme.isDark 
-            ? 'rgba(15, 15, 15, 0.95)' 
+          paddingBottom: Platform.OS === 'ios' ? 60 : 80,
+          backgroundColor: theme.isDark
+            ? 'rgba(15, 15, 15, 0.95)'
             : 'rgba(255, 255, 255, 0.95)',
           borderTopWidth: 0,
           ...theme.shadows.lg,

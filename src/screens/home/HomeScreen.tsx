@@ -13,7 +13,7 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppTheme } from '../../theme';
@@ -130,20 +130,25 @@ export function HomeScreen({ navigation }: Props) {
     title: string,
     value: number | string,
     icon: keyof typeof Ionicons.glyphMap,
-    gradient: [string, string, ...string[]]
+    accentColor: string
+
   ) => (
-    <LinearGradient
-      colors={gradient}
-      style={styles.statCard}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <View
+      style={[styles.statCard, { backgroundColor: theme.colors.surface.primary }]}
     >
-      <View style={styles.statIconContainer}>
-        <Ionicons name={icon} size={24} color="rgba(255,255,255,0.9)" />
+      <View style={styles.statBackgroundIcon}>
+        <Ionicons name={icon} size={100} color={accentColor} style={{ opacity: 0.08 }} />
       </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-    </LinearGradient>
+
+      <View style={styles.statContent}>
+        <Text style={[styles.statValue, { color: accentColor }]}>{value}</Text>
+        <Text style={[styles.statTitle, { color: theme.colors.text.secondary }]}>{title}</Text>
+      </View>
+
+      <View style={[styles.statIconBadge, { backgroundColor: accentColor + '15' }]}>
+        <Ionicons name={icon} size={20} color={accentColor} />
+      </View>
+    </View>
   );
 
   const renderAppointmentCard = (appointment: Appointment) => (
@@ -279,17 +284,17 @@ export function HomeScreen({ navigation }: Props) {
           {isLoadingHomeData ? (
             <>
               <View style={[styles.statCard, { backgroundColor: theme.colors.surface.secondary }]}>
-                <View style={[styles.statIconContainer, { backgroundColor: theme.colors.surface.elevated }]} />
+                <View style={[styles.statIconBadge, { backgroundColor: theme.colors.surface.elevated }]} />
                 <View style={{ width: 40, height: 24, backgroundColor: theme.colors.surface.elevated, borderRadius: 4, marginBottom: 4 }} />
                 <View style={{ width: 60, height: 12, backgroundColor: theme.colors.surface.elevated, borderRadius: 4 }} />
               </View>
               <View style={[styles.statCard, { backgroundColor: theme.colors.surface.secondary }]}>
-                <View style={[styles.statIconContainer, { backgroundColor: theme.colors.surface.elevated }]} />
+                <View style={[styles.statIconBadge, { backgroundColor: theme.colors.surface.elevated }]} />
                 <View style={{ width: 40, height: 24, backgroundColor: theme.colors.surface.elevated, borderRadius: 4, marginBottom: 4 }} />
                 <View style={{ width: 60, height: 12, backgroundColor: theme.colors.surface.elevated, borderRadius: 4 }} />
               </View>
               <View style={[styles.statCard, { backgroundColor: theme.colors.surface.secondary }]}>
-                <View style={[styles.statIconContainer, { backgroundColor: theme.colors.surface.elevated }]} />
+                <View style={[styles.statIconBadge, { backgroundColor: theme.colors.surface.elevated }]} />
                 <View style={{ width: 40, height: 24, backgroundColor: theme.colors.surface.elevated, borderRadius: 4, marginBottom: 4 }} />
                 <View style={{ width: 60, height: 12, backgroundColor: theme.colors.surface.elevated, borderRadius: 4 }} />
               </View>
@@ -300,19 +305,19 @@ export function HomeScreen({ navigation }: Props) {
                 'Upcoming',
                 upcoming,
                 'calendar',
-                [theme.colors.palette.primary[500], theme.colors.palette.primary[400]]
+                theme.colors.palette.primary[600]
               )}
               {renderStatCard(
                 'Completed',
                 completed,
                 'checkmark-circle',
-                [theme.colors.palette.success[500], theme.colors.palette.success[400]]
+                theme.colors.palette.success[600]
               )}
               {renderStatCard(
                 'Rating',
                 averageRating === null ? 0 : Number(averageRating).toFixed(1),
                 'star',
-                [theme.colors.palette.warning[500], theme.colors.palette.warning[400]]
+                theme.colors.palette.warning[600]
               )}
             </>
           )}
@@ -412,28 +417,50 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
+    height: 120,
     padding: 16,
-    borderRadius: 16,
-    alignItems: 'flex-start',
+    borderRadius: 20,
+    position: 'relative',
+    overflow: 'hidden',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
-  statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+  statBackgroundIcon: {
+    position: 'absolute',
+    right: -20,
+    bottom: -20,
+    transform: [{ rotate: '-15deg' }],
+  },
+  statContent: {
+    zIndex: 1,
+    marginTop: 8,
   },
   statValue: {
-    fontSize: 40,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 2,
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 4,
   },
   statTitle: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  statIconBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   section: {
     marginBottom: 24,

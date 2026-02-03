@@ -16,7 +16,7 @@ interface ChatState {
     isSocketConnected: boolean;
 
     // Actions
-    connectSocket: () => void;
+    connectSocket: () => Promise<void>;
     disconnectSocket: () => void;
     setConversations: (conversations: Conversation[]) => void;
     setCurrentConversation: (conversation: Conversation | null) => Promise<void>;
@@ -43,7 +43,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     error: null,
     isSocketConnected: false,
 
-    connectSocket: () => {
+    connectSocket: async () => {
         const user = useAuthStore.getState().user;
         if (!user) {
             console.error('No user found, cannot connect socket');
@@ -52,11 +52,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         try {
             const tokens = useAuthStore.getState().tokens; // Get token from auth store
-            socketService.connect(tokens?.accessToken || '');
+            await socketService.connect(tokens?.accessToken || '');
 
             // Listen for incoming messages
             socketService.onMessage((payload) => {
-                console.log('📨 Received message:', payload);
+                // console.log('📨 Received message:', payload);
 
                 // Extract the actual message from the nested structure
                 // Backend sends: { conversation: {...}, message: {...} }
@@ -75,7 +75,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             });
 
             socketService.onMessagesRead((data) => {
-                console.log('✅ Messages marked as read:', data);
+                // console.log('✅ Messages marked as read:', data);
                 set((state) => ({
                     messages: state.messages.map(msg =>
                         data.messageIds.includes(msg.id)
@@ -270,7 +270,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     markAsRead: (conversationId: string, messageIds: string[]) => {
         if (messageIds.length === 0) return;
 
-        console.log('📖 Marking messages as read:', { conversationId, messageIds });
+        // console.log('📖 Marking messages as read:', { conversationId, messageIds });
 
         // Emit to backend
         socketService.markAsRead({ conversationId, messageIds });
