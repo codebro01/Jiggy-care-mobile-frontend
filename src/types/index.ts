@@ -12,17 +12,14 @@ export interface User {
     phone?: string | null;
     emailVerified: boolean;
     dateJoined: string;
-
-    // Common fields
     address?: string | null;
     dateOfBirth?: string | null;
     gender?: string | null;
-
-    // Consultant-specific fields
     about?: string | null;
     availability?: boolean;
     certification?: string[] | null;
-    speciality?: string | null; // Note: backend uses 'speciality' not 'specialization'
+    speciality?: string | null; 
+    prefix?: string | null; 
     workingHours?: Record<string, string> | null;
     yrsOfExperience?: number | null;
     languages?: string[] | null;

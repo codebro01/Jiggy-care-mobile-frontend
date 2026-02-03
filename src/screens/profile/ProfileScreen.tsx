@@ -155,7 +155,7 @@ export function ProfileScreen({ navigation }: Props) {
                   { color: theme.colors.text.primary, fontFamily: theme.fontFamily.bold },
                 ]}
               >
-                {user?.role === 'consultant' && 'Dr. '}{user?.fullName}
+                {user?.role === 'consultant' && user.prefix}{user?.fullName}
               </Text>
               <Text
                 style={[

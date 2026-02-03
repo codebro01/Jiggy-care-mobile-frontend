@@ -91,6 +91,7 @@ export function HomeScreen({ navigation }: Props) {
   // }, []);
 
 
+  console.log(user)
   const fetchHomeScreenData = async () => {
     try {
       setIsLoadingHomeData(true);
@@ -261,7 +262,7 @@ export function HomeScreen({ navigation }: Props) {
                 { color: theme.colors.text.primary, fontFamily: theme.fontFamily.bold },
               ]}
             >
-              Dr. {user?.fullName || 'N/A'}
+              {user?.prefix} {user?.fullName || 'N/A'}
             </Text>
           </View>
           <Pressable
