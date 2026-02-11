@@ -21,6 +21,7 @@ import { Button } from '../../components';
 import { Alert, useAlert } from '@/components/alert';
 import { authService } from '@/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
+import { loginOneSignalUser } from '@/services/oneSignal.service';
 
 type OTPVerificationScreenNavigationProp = NativeStackNavigationProp<
     AuthStackParamList,
@@ -114,6 +115,8 @@ const {setUser} = useAuthStore()
             showSuccess('Verification successful!', 'Success');
             // console.log(response.data)
             setUser(response.data);
+
+            loginOneSignalUser(response.data.id)
            
         } catch (error: any) {
             showError(

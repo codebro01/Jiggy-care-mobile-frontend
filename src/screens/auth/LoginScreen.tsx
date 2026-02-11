@@ -26,6 +26,7 @@ import { useAuthStore } from '../../stores';
 import { Button, Input } from '../../components';
 import { authService } from '../../services/auth.service';
 import { useGoogleAuth } from './UseGoogleAuth';
+import { loginOneSignalUser } from '@/services/oneSignal.service';
 
 
 
@@ -113,6 +114,8 @@ const { signIn } = useGoogleAuth();
         yrsOfExperience: response.data.yrsOfExperience,
         languages: response.data.languages,
       });
+
+      loginOneSignalUser(response.data.id)
       
     } catch (error: any) {
       showError(`Error: ${error.message || error}`, 'Error')
@@ -154,7 +157,10 @@ const { signIn } = useGoogleAuth();
         yrsOfExperience: response.data.yrsOfExperience,
         languages: response.data.languages,
       });
-      // console.log(response);
+
+      const oneSignal = loginOneSignalUser(response.data.id)
+      console.log("onesignal",oneSignal)
+
       setLoading(false)
       showSuccess('Login successful', 'Success');
 

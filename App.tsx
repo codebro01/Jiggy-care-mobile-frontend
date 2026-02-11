@@ -1,3 +1,4 @@
+
 /**
  * Jiggy Care Mobile - Healthcare Consultant App
  * Main entry point with providers and font loading
@@ -8,6 +9,7 @@ import { View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
+import { initializeOneSignal } from '@/services/oneSignal.service';
 import {
   Manrope_400Regular,
   Manrope_500Medium,
@@ -38,8 +40,10 @@ export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
 
   useEffect(() => {
+
     async function prepare() {
       try {
+        initializeOneSignal();
         // Pre-load fonts
         await Font.loadAsync({
           Manrope_400Regular,
