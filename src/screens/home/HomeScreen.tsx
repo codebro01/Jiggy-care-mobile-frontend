@@ -83,12 +83,16 @@ export function HomeScreen({ navigation }: Props) {
     (apt) => apt.status === 'upcoming'
   );
 
+  // console.log('upcomingAppointments', upcomingAppointments)
+
   useEffect(() => {
     fetchHomeScreenData();
   }, []);
   // useEffect(() => {
   //   fetchAppointments();
   // }, []);
+
+
 
 
   console.log(user)
@@ -217,6 +221,7 @@ export function HomeScreen({ navigation }: Props) {
                 hour: 'numeric',
                 minute: '2-digit',
                 hour12: true,
+                timeZone: 'UTC'
               })}
             </Text>
           </View>
