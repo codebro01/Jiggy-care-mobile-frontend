@@ -85,6 +85,11 @@ class SocketService {
 
     async ensureConnected() {
         if (!this.socket?.connected) {
+            console.warn('⚠️ ensureConnected failed. Socket state:', {
+                initialized: !!this.socket,
+                connected: this.socket?.connected,
+                id: this.socket?.id
+            });
             throw new Error('Socket not connected');
         }
     }

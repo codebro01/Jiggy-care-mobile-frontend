@@ -19,8 +19,9 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  Alert as RNAlert,
 } from 'react-native';
+import { useAlert, Alert } from '@/components/alert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'; // ✅ Import useSafeAreaInsets
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -58,6 +59,7 @@ export function ChatScreen({ navigation, route }: Props) {
   const { appointment } = route.params;
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { alert, showSuccess, showError, showWarning, hideAlert } = useAlert();
 
   const {
     messages,
@@ -105,6 +107,7 @@ export function ChatScreen({ navigation, route }: Props) {
           appointment.patientId
         );
 
+
         if (!mounted) return;
 
         if (!conversation) {
@@ -131,13 +134,14 @@ export function ChatScreen({ navigation, route }: Props) {
         await loadMessages(conversation.id);
 
         setIsConnecting(false);
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ Chat initialization error:', error);
         if (mounted) {
           setIsConnecting(false);
-          Alert.alert(
+          const errorMessage = error?.message || 'Failed to connect to chat. Please try again.';
+          RNAlert.alert(
             'Connection Error',
-            'Failed to connect to chat. Please try again.',
+            errorMessage,
             [
               {
                 text: 'Retry',
@@ -212,7 +216,7 @@ export function ChatScreen({ navigation, route }: Props) {
   const handleSend = () => {
     if (!inputText.trim()) return;
     if (!currentConversation) {
-      Alert.alert('Error', 'Not connected to conversation');
+      showError('Not connected to conversation', 'Error');
       return;
     }
 
@@ -247,6 +251,16 @@ export function ChatScreen({ navigation, route }: Props) {
       minute: '2-digit',
       hour12: true,
     });
+  };
+
+  const handleVideoCall = () => {
+    RNAlert.alert('Video Call', 'Starting video call...');
+    // TODO: Implement video call logic
+  };
+
+  const handleVoiceCall = () => {
+    RNAlert.alert('Voice Call', 'Starting voice call...');
+    // TODO: Implement voice call logic
   };
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
@@ -398,11 +412,20 @@ export function ChatScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        <Pressable
-          style={[styles.headerButton, { backgroundColor: theme.colors.surface.secondary }]}
-        >
-          <Ionicons name="ellipsis-vertical" size={20} color={theme.colors.text.primary} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            style={[styles.headerButton, { backgroundColor: theme.colors.surface.secondary, marginRight: 8 }]}
+            onPress={handleVideoCall}
+          >
+            <Ionicons name="videocam" size={20} color={theme.colors.text.primary} />
+          </Pressable>
+          <Pressable
+            style={[styles.headerButton, { backgroundColor: theme.colors.surface.secondary }]}
+            onPress={handleVoiceCall}
+          >
+            <Ionicons name="call" size={20} color={theme.colors.text.primary} />
+          </Pressable>
+        </View>
       </View>
 
       {/* Messages */}
@@ -477,6 +500,13 @@ export function ChatScreen({ navigation, route }: Props) {
           </Animated.View>
         </View>
       </KeyboardAvoidingView>
+      <Alert
+        type={alert.type}
+        message={alert.message}
+        title={alert.title}
+        visible={alert.visible}
+        onClose={hideAlert}
+      />
     </SafeAreaView>
   );
 }
@@ -522,6 +552,10 @@ const styles = StyleSheet.create({
   headerStatus: {
     fontSize: 12,
     marginTop: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerButton: {
     width: 40,

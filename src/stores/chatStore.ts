@@ -104,6 +104,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         } catch (error) {
             console.error('Socket connection failed:', error);
             set({ error: 'Failed to connect to chat server' });
+            throw error; // Rethrow so component can handle it
         }
     },
 

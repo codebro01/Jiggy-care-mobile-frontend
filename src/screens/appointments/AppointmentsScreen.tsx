@@ -11,6 +11,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,12 +36,15 @@ interface Props {
   navigation: AppointmentsScreenNavigationProp;
 }
 
-type FilterType = 'upcoming' | 'completed' | 'cancelled';
+type FilterType = 'upcoming' | 'completed' | 'cancelled' | 'in_progress' | 'pending_confirmation' | 'no_show';
 
 const filters: { key: FilterType; label: string }[] = [
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'completed', label: 'Completed' },
   { key: 'cancelled', label: 'Cancelled' },
+  { key: 'in_progress', label: 'in_progress' },
+  { key: 'pending_confirmation', label: 'pending_confirmation' },
+  { key: 'no_show', label: 'no_show' },
 ];
 
 export function AppointmentsScreen({ navigation }: Props) {
@@ -201,8 +205,15 @@ export function AppointmentsScreen({ navigation }: Props) {
       </View>
 
       {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
-        {filters.map(renderFilterTab)}
+      <View style={styles.filterWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContentContainer}
+          style={styles.filterScroll}
+        >
+          {filters.map(renderFilterTab)}
+        </ScrollView>
       </View>
 
       {/* Appointments List */}
@@ -249,11 +260,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
   },
-  filterContainer: {
+  filterWrapper: {
+    marginBottom: 16,
+  },
+  filterScroll: {
+    flexGrow: 0,
+  },
+  filterContentContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    marginBottom: 16,
     gap: 8,
+    alignItems: 'center',
   },
   filterTab: {
     paddingHorizontal: 16,

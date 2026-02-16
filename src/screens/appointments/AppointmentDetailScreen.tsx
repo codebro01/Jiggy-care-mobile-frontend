@@ -3,13 +3,20 @@
  * Shows patient details and allows starting chat
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   Pressable,
+  Modal,
+  TouchableWithoutFeedback,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Alert as RNAlert,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,6 +26,9 @@ import { RouteProp } from '@react-navigation/native';
 import { useAppTheme } from '../../theme';
 import { Avatar, Button, Card, StatusBadge } from '../../components';
 import { AppointmentsStackParamList } from '../../navigation/types';
+import { appointmentService } from '../../services/appointment.service';
+import { useAlert, Alert } from '@/components/alert';
+
 
 
 type AppointmentDetailScreenNavigationProp = NativeStackNavigationProp<
@@ -38,9 +48,74 @@ interface Props {
 export function AppointmentDetailScreen({ navigation, route }: Props) {
   const theme = useAppTheme();
   const { appointment } = route.params;
+  const [notes, setNotes] = useState('');
+  const [isCompleteModalVisible, setIsCompleteModalVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { alert, showSuccess, showError, showWarning, hideAlert } = useAlert();
+
 
   const handleStartChat = () => {
     navigation.navigate('Chat', { appointment });
+  };
+
+  const openCompleteModal = () => {
+    setNotes('');
+    setIsCompleteModalVisible(true);
+  };
+
+  const closeCompleteModal = () => {
+    setIsCompleteModalVisible(false);
+    setNotes('');
+  };
+
+  const submitCompletion = async () => {
+    if (!notes.trim()) {
+      showError('Error', 'Please enter notes for the appointment');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await appointmentService.completeAppointment(appointment.bookingId, notes);
+      setIsSubmitting(false);
+      closeCompleteModal();
+      showSuccess('Success', 'Appointment marked as completed');
+      navigation.goBack();
+    } catch (error:any) {
+      console.log(error);
+      setIsSubmitting(false);
+      showError('Error', error.message);
+    }
+  };
+
+  const confirmNoShow = () => {
+    RNAlert.alert(
+      'Mark as No Show',
+      'Are you sure you want to mark this appointment as a No Show? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes, Mark No Show',
+          style: 'destructive',
+          onPress: handleMarkNoShow,
+        },
+      ]
+    );
+  };
+
+  const handleMarkNoShow = async () => {
+    try {
+      await appointmentService.markNoShow(appointment.bookingId);
+      showSuccess('Success', 'Appointment marked as no show');
+      navigation.goBack();
+    } catch (error) {
+      console.log(error);
+      showError('Error', 'Failed to mark appointment as no show');
+    }
   };
 
   const InfoRow = ({
@@ -149,7 +224,7 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
         >
           Appointment Information
         </Text>
-        
+
         <Card variant="outlined" style={styles.infoCard}>
           <InfoRow
             icon="calendar"
@@ -179,21 +254,35 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
             value={appointment.type.charAt(0).toUpperCase() + appointment.type.slice(1) + ' Consultation'}
           /> */}
         </Card>
-             <View>
+        <View>
           <Pressable
             style={styles.startChatButton}
             onPress={() => navigation.navigate('Chat', { appointment })}
           >
             <Ionicons
               name="chatbubble-ellipses-outline"
-              size={14}
-              color={theme.colors.text.tertiary}
+              size={20}
+              color={'#fff'}
             />
             <Text style={styles.startChatButtonText}>Start Messaging</Text>
           </Pressable>
-        
-                <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
-              </View>
+
+          <View style={styles.actionButtonsContainer}>
+            <Pressable
+              style={[styles.actionButton, { backgroundColor: '#4CAF50', flex: 1, marginRight: 8 }]}
+              onPress={openCompleteModal}
+            >
+              <Text style={styles.actionButtonText}>Complete Appointment</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.actionButton, { backgroundColor: '#F44336', flex: 1, marginLeft: 8 }]}
+              onPress={confirmNoShow}
+            >
+              <Text style={styles.actionButtonText}>Mark No Show</Text>
+            </Pressable>
+          </View>
+        </View>
 
 
         {/* Notes */}
@@ -232,6 +321,68 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
           />
         </View>
       )}
+      <Alert
+        type={alert.type}
+        message={alert.message}
+        title={alert.title}
+        visible={alert.visible}
+        onClose={hideAlert}
+      />
+
+      {/* Completion Modal */}
+      <Modal
+        visible={isCompleteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeCompleteModal}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={[styles.modalContent, { backgroundColor: theme.colors.surface.primary }]}>
+              <Text style={[styles.modalTitle, { color: theme.colors.text.primary, fontFamily: theme.fontFamily.semiBold }]}>
+                Complete Appointment
+              </Text>
+
+              <Text style={[styles.modalSubtitle, { color: theme.colors.text.secondary }]}>
+                Please add any notes or summary for this appointment before completing it.
+              </Text>
+
+              {/* Use standard TextInput for now to ensure multiline works well in modal */}
+              <View style={[styles.notesInputContainer, { backgroundColor: theme.colors.surface.secondary, borderColor: theme.colors.border.primary }]}>
+                <TextInput
+                  style={[styles.notesInput, { color: theme.colors.text.primary, fontFamily: theme.fontFamily.regular }]}
+                  placeholder="Enter appointment notes..."
+                  placeholderTextColor={theme.colors.text.tertiary}
+                  multiline
+                  numberOfLines={4}
+                  value={notes}
+                  onChangeText={setNotes}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <View style={styles.modalActions}>
+                <Button
+                  title="Cancel"
+                  variant="outline"
+                  onPress={closeCompleteModal}
+                  style={styles.modalButton}
+                />
+                <Button
+                  title="Submit"
+                  variant="primary"
+                  onPress={submitCompletion}
+                  loading={isSubmitting}
+                  style={styles.modalButton}
+                />
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -345,15 +496,80 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8, // Space between icon and text
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    padding: 16,
-    backgroundColor: '#71df90ff',
+    paddingVertical: 12, // Increased padding
+    backgroundColor: '#2196F3', // Blue color
     borderRadius: 12,
-    marginBottom: 24,
-    // ... other styles
+    marginBottom: 16, // Reduced margin
   },
   startChatButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  actionButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
     fontSize: 14,
-  
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  notesInputContainer: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 120,
+    marginBottom: 20,
+  },
+  notesInput: {
+    flex: 1,
+    fontSize: 16,
+    minHeight: 100,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
   },
 });
