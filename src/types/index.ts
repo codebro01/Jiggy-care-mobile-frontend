@@ -18,8 +18,8 @@ export interface User {
     about?: string | null;
     availability?: boolean;
     certification?: string[] | null;
-    speciality?: string | null; 
-    prefix?: string | null; 
+    speciality?: string | null;
+    prefix?: string | null;
     workingHours?: Record<string, string> | null;
     yrsOfExperience?: number | null;
     languages?: string[] | null;
@@ -105,7 +105,7 @@ export type FrequencyType =
 export interface Prescription {
     id: string
     patientId: string;
-    patientName: string; 
+    patientName: string;
     consultantId: string;
     name: string;
     dosage: number;
@@ -114,8 +114,8 @@ export interface Prescription {
     pillsRemaining: number;
     prescribedBy: string | null;
     totalPills: number;
-    startDate: string; 
-    createdAt: string 
+    startDate: string;
+    createdAt: string
 }
 
 export interface CreatePrescription {
@@ -153,3 +153,5 @@ export interface PaginatedResponse<T> {
     pageSize: number;
     hasMore: boolean;
 }
+
+export * from './call';

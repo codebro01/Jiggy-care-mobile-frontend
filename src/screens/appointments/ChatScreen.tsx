@@ -42,6 +42,8 @@ import { Message } from '../../types';
 import { chatService } from '@/services/chat.service';
 import { socketService } from '@/services/socket.service';
 import { useAuthStore } from '@/stores/authStore';
+import { CallModal } from '@/components/CallModal';
+import { useCallStore } from '@/stores/callStore';
 
 type ChatScreenNavigationProp = NativeStackNavigationProp<
   AppointmentsStackParamList,
@@ -253,14 +255,39 @@ export function ChatScreen({ navigation, route }: Props) {
     });
   };
 
+  const { initiateCall, handleIncomingCall, handleRinging, handleStopRinging, handleNoAnswer } = useCallStore();
+
+  useEffect(() => {
+    socketService.onIncomingCall(handleIncomingCall);
+    socketService.onCallRinging(handleRinging);
+    socketService.onCallStopRinging(handleStopRinging);
+    socketService.onCallNoAnswer(handleNoAnswer);
+    return () => {
+      socketService.offIncomingCall(handleIncomingCall);
+      socketService.offCallRinging(handleRinging);
+      socketService.offCallStopRinging(handleStopRinging);
+      socketService.offCallNoAnswer(handleNoAnswer);
+    };
+  }, []);
+
   const handleVideoCall = () => {
-    RNAlert.alert('Video Call', 'Starting video call...');
-    // TODO: Implement video call logic
+    if (!currentConversation || !user) return;
+    const peerId = currentConversation.patientId === user.id ? currentConversation.consultantId : currentConversation.patientId;
+    if (!peerId) {
+      showError('Cannot initiate call', 'Peer ID not found');
+      return;
+    }
+    initiateCall(peerId, currentConversation.id, 'video', appointment.patientName);
   };
 
   const handleVoiceCall = () => {
-    RNAlert.alert('Voice Call', 'Starting voice call...');
-    // TODO: Implement voice call logic
+    if (!currentConversation || !user) return;
+    const peerId = currentConversation.patientId === user.id ? currentConversation.consultantId : currentConversation.patientId;
+    if (!peerId) {
+      showError('Cannot initiate call', 'Peer ID not found');
+      return;
+    }
+    initiateCall(peerId, currentConversation.id, 'audio', appointment.patientName);
   };
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
@@ -507,6 +534,7 @@ export function ChatScreen({ navigation, route }: Props) {
         visible={alert.visible}
         onClose={hideAlert}
       />
+      <CallModal />
     </SafeAreaView>
   );
 }

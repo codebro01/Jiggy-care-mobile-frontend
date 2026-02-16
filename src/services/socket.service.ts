@@ -1,5 +1,15 @@
 // services/socket.service.ts
 import { io, Socket } from 'socket.io-client';
+import {
+    CallInitiatePayload,
+    CallIncomingPayload,
+    CallAcceptedPayload,
+    CallRejectedPayload,
+    CallEndedPayload,
+    WebRTCOfferPayload,
+    WebRTCAnswerPayload,
+    WebRTCIceCandidatePayload
+} from '../types';
 
 const BASE_URL = 'https://jiggy-care.onrender.com';
 
@@ -263,6 +273,126 @@ class SocketService {
 
     isConnected() {
         return this.socket?.connected || false;
+    }
+
+    // Call Signaling Methods
+
+    initiateCall(payload: CallInitiatePayload) {
+        this.socket?.emit('call:initiate', payload);
+    }
+
+    acceptCall(payload: { toUserId: string }) {
+        this.socket?.emit('call:accept', payload);
+    }
+
+    rejectCall(payload: { toUserId: string; reason?: string }) {
+        this.socket?.emit('call:reject', payload);
+    }
+
+    endCall(payload: { toUserId: string }) {
+        this.socket?.emit('call:end', payload);
+    }
+
+    sendWebRTCOffer(payload: { toUserId: string; offer: RTCSessionDescriptionInit }) {
+        this.socket?.emit('webrtc:offer', payload);
+    }
+
+    sendWebRTCAnswer(payload: { toUserId: string; answer: RTCSessionDescriptionInit }) {
+        this.socket?.emit('webrtc:answer', payload);
+    }
+
+    sendWebRTCIceCandidate(payload: { toUserId: string; candidate: RTCIceCandidateInit }) {
+        this.socket?.emit('webrtc:ice-candidate', payload);
+    }
+
+    // Call Signaling Listeners
+
+    onIncomingCall(callback: (payload: CallIncomingPayload) => void) {
+        this.socket?.on('call:incoming', callback);
+    }
+
+    offIncomingCall(callback: (payload: CallIncomingPayload) => void) {
+        this.socket?.off('call:incoming', callback);
+    }
+
+    onCallAccepted(callback: (payload: CallAcceptedPayload) => void) {
+        this.socket?.on('call:accepted', callback);
+    }
+
+    offCallAccepted(callback: (payload: CallAcceptedPayload) => void) {
+        this.socket?.off('call:accepted', callback);
+    }
+
+    onCallRejected(callback: (payload: CallRejectedPayload) => void) {
+        this.socket?.on('call:rejected', callback);
+    }
+
+    offCallRejected(callback: (payload: CallRejectedPayload) => void) {
+        this.socket?.off('call:rejected', callback);
+    }
+
+    onCallEnded(callback: (payload: CallEndedPayload) => void) {
+        this.socket?.on('call:ended', callback);
+    }
+
+    offCallEnded(callback: (payload: CallEndedPayload) => void) {
+        this.socket?.off('call:ended', callback);
+    }
+
+    onCallRinging(callback: (payload: { toUserId: string; conversationId: string; callType: string }) => void) {
+        this.socket?.on('call:ringing', callback);
+    }
+
+    offCallRinging(callback: (payload: any) => void) {
+        this.socket?.off('call:ringing', callback);
+    }
+
+    onCallStopRinging(callback: () => void) {
+        this.socket?.on('call:stop-ringing', callback);
+    }
+
+    offCallStopRinging(callback: () => void) {
+        this.socket?.off('call:stop-ringing', callback);
+    }
+
+    onCallNoAnswer(callback: (payload: { toUserId: string }) => void) {
+        this.socket?.on('call:no-answer', callback);
+    }
+
+    offCallNoAnswer(callback: (payload: any) => void) {
+        this.socket?.off('call:no-answer', callback);
+    }
+
+    onCallMissed(callback: (payload: { fromUserId: string; conversationId: string }) => void) {
+        this.socket?.on('call:missed', callback);
+    }
+
+    offCallMissed(callback: (payload: any) => void) {
+        this.socket?.off('call:missed', callback);
+    }
+
+    onWebRTCOffer(callback: (payload: WebRTCOfferPayload) => void) {
+        this.socket?.on('webrtc:offer', callback);
+    }
+
+    offWebRTCOffer(callback: (payload: WebRTCOfferPayload) => void) {
+        this.socket?.off('webrtc:offer', callback);
+    }
+
+    onWebRTCAnswer(callback: (payload: WebRTCAnswerPayload) => void) {
+        this.socket?.on('webrtc:answer', callback);
+    }
+
+    offWebRTCAnswer(callback: (payload: WebRTCAnswerPayload) => void) {
+        this.socket?.off('webrtc:answer', callback);
+    }
+
+    onWebRTCIceCandidate(callback: (payload: WebRTCIceCandidatePayload) => void) {
+        this.socket?.on('webrtc:ice-candidate', callback);
+    }
+
+    offWebRTCIceCandidate(callback: (payload: WebRTCIceCandidatePayload) => void) {
+        this.socket?.off('webrtc:ice-candidate', callback);
     }
 }
 
