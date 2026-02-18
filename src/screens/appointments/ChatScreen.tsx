@@ -135,6 +135,9 @@ export function ChatScreen({ navigation, route }: Props) {
         // 5. Load existing messages
         await loadMessages(conversation.id);
 
+        // 6. Initialize call event listeners
+        useCallStore.getState().initialize();
+
         setIsConnecting(false);
       } catch (error: any) {
         console.error('❌ Chat initialization error:', error);
@@ -166,6 +169,7 @@ export function ChatScreen({ navigation, route }: Props) {
     return () => {
       mounted = false;
       setCurrentConversation(null);
+      useCallStore.getState().cleanup();
       // Don't disconnect socket here as it might be used by other screens
     };
   }, [appointment.bookingId]);

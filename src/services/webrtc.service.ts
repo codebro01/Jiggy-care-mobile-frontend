@@ -12,10 +12,37 @@ class WebRTCService {
     localStream: MediaStream | null = null;
     remoteStream: MediaStream | null = null;
 
+
+    private pendingCandidates: RTCIceCandidateInit[] = [];
+    private hasRemoteDescription = false;
+
     private configuration = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
             // Add TURN servers here if needed
+            {
+                urls: "stun:stun.relay.metered.ca:80",
+            },
+            {
+                urls: "turn:global.relay.metered.ca:80",
+                username: "f028920364fa5752581b1db3",
+                credential: "ZNTb85d97N7Ygqct",
+            },
+            {
+                urls: "turn:global.relay.metered.ca:80?transport=tcp",
+                username: "f028920364fa5752581b1db3",
+                credential: "ZNTb85d97N7Ygqct",
+            },
+            {
+                urls: "turn:global.relay.metered.ca:443",
+                username: "f028920364fa5752581b1db3",
+                credential: "ZNTb85d97N7Ygqct",
+            },
+            {
+                urls: "turns:global.relay.metered.ca:443?transport=tcp",
+                username: "f028920364fa5752581b1db3",
+                credential: "ZNTb85d97N7Ygqct",
+            },
         ],
     };
 
@@ -112,21 +139,35 @@ class WebRTCService {
 
     async setRemoteDescription(description: RTCSessionDescription | RTCSessionDescriptionInit) {
         if (!this.peerConnection) throw new Error('PeerConnection not initialized');
-        // Ensure sdp is a string, even if empty, to satisfy stricter types if needed, 
-        // though RTCSessionDescriptionInit should allow optional sdp.
-        // The error suggests mismatch between Init and class. 
-        // We can just pass description if it matches Init, or recreate it.
-        // The safest way with react-native-webrtc is often just passing the object if it's Init.
 
         const sessionDesc = description instanceof RTCSessionDescription
             ? description
-            : new RTCSessionDescription(description as any); // Type assertion to bypass strict mismatch if needed
+            : new RTCSessionDescription(description as any);
 
         await this.peerConnection.setRemoteDescription(sessionDesc);
+        this.hasRemoteDescription = true;
+
+        // Flush queued candidates
+        console.log(`📦 Flushing ${this.pendingCandidates.length} queued ICE candidates`);
+        for (const candidate of this.pendingCandidates) {
+            await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+        this.pendingCandidates = [];
     }
 
     async addIceCandidate(candidate: RTCIceCandidate | RTCIceCandidateInit) {
-        if (!this.peerConnection) throw new Error('PeerConnection not initialized');
+        if (!this.peerConnection) {
+            console.log('⏸️ Queuing ICE candidate (no peer connection yet)');
+            this.pendingCandidates.push(candidate as RTCIceCandidateInit);
+            return;
+        }
+
+        if (!this.hasRemoteDescription) {
+            console.log('⏸️ Queuing ICE candidate (no remote description yet)');
+            this.pendingCandidates.push(candidate as RTCIceCandidateInit);
+            return;
+        }
+
         await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
     }
 
@@ -165,6 +206,9 @@ class WebRTCService {
             this.peerConnection = null;
         }
         this.remoteStream = null;
+
+        this.hasRemoteDescription = false;
+        this.pendingCandidates = [];
     }
 }
 
