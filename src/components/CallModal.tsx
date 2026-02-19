@@ -15,12 +15,14 @@ export const CallModal = () => {
         remoteStream,
         isMuted,
         isVideoEnabled,
+        isSpeakerOn,
         otherUserName,
         endCall,
         acceptCall,
         rejectCall,
         toggleMute,
         toggleVideo,
+        toggleSpeaker,
         switchCamera
     } = useCallStore();
 
@@ -129,6 +131,13 @@ export const CallModal = () => {
                 {!isIncoming && (
                     <View style={styles.controlsContainer}>
                         <View style={styles.controlsRow}>
+                            <Pressable
+                                style={[styles.controlButton, { backgroundColor: isSpeakerOn ? 'white' : 'rgba(255,255,255,0.2)' }]}
+                                onPress={toggleSpeaker}
+                            >
+                                <Ionicons name={isSpeakerOn ? "volume-high" : "volume-low"} size={24} color={isSpeakerOn ? 'black' : 'white'} />
+                            </Pressable>
+
                             <Pressable
                                 style={[styles.controlButton, { backgroundColor: isMuted ? 'white' : 'rgba(255,255,255,0.2)' }]}
                                 onPress={toggleMute}

@@ -6,6 +6,7 @@ import {
     mediaDevices,
 } from 'react-native-webrtc';
 import { PermissionsAndroid, Platform, Permission } from 'react-native';
+import InCallManager from 'react-native-incall-manager';
 
 class WebRTCService {
     peerConnection: RTCPeerConnection | null = null;
@@ -196,6 +197,10 @@ class WebRTCService {
         }
     }
 
+    toggleSpeaker(enabled: boolean) {
+        InCallManager.setForceSpeakerphoneOn(enabled);
+    }
+
     cleanup() {
         if (this.localStream) {
             this.localStream.getTracks().forEach(track => track.stop());
@@ -209,6 +214,9 @@ class WebRTCService {
 
         this.hasRemoteDescription = false;
         this.pendingCandidates = [];
+
+        // Reset speaker to earpiece
+        InCallManager.setForceSpeakerphoneOn(false);
     }
 }
 

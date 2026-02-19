@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import { MediaStream } from 'react-native-webrtc';
 import { socketService } from '@/services/socket.service';
 import { webRTCService } from '@/services/webrtc.service';
+import { ringService } from '@/services/ring.service';
 import { CallIncomingPayload, CallType } from '@/types';
+import InCallManager from 'react-native-incall-manager';
 
 type CallStatus = 'idle' | 'calling' | 'ringing' | 'incoming' | 'connected' | 'ended';
 
@@ -16,6 +18,7 @@ interface CallState {
     remoteStream: MediaStream | null;
     isMuted: boolean;
     isVideoEnabled: boolean;
+    isSpeakerOn: boolean;
     isFrontCamera: boolean;
     pendingOffer: { fromUserId: string; offer: RTCSessionDescriptionInit } | null;
     error: string | null;
@@ -31,6 +34,7 @@ interface CallState {
     handleNoAnswer: () => void;
     toggleMute: () => void;
     toggleVideo: () => void;
+    toggleSpeaker: () => void;
     switchCamera: () => void;
     reset: () => void;
     clearError: () => void;
@@ -52,6 +56,7 @@ export const useCallStore = create<CallState>((set, get) => ({
     remoteStream: null,
     isMuted: false,
     isVideoEnabled: true,
+    isSpeakerOn: false,
     isFrontCamera: true,
     error: null,
     pendingOffer: null,
@@ -61,6 +66,9 @@ export const useCallStore = create<CallState>((set, get) => ({
         try {
             console.log('🚀 Initiating call:', { toUserId, conversationId, type });
             set({ status: 'calling', callType: type, conversationId, otherUserId: toUserId, otherUserName: otherUserName || null, error: null });
+
+            // Start InCallManager audio session
+            InCallManager.start({ media: type === 'video' ? 'video' : 'audio' });
 
             // Start local stream
             console.log('🎥 Starting local stream...');
@@ -113,6 +121,8 @@ export const useCallStore = create<CallState>((set, get) => ({
 
         try {
             console.log('📞 Accepting call from:', otherUserId);
+            ringService.stopRingtone();
+            InCallManager.start({ media: callType === 'video' ? 'video' : 'audio' });
             set({ status: 'connected', error: null });
 
             // Start local stream
@@ -151,6 +161,7 @@ export const useCallStore = create<CallState>((set, get) => ({
 
     handleIncomingCall: (payload) => {
         console.log('📞 Incoming call received:', payload);
+        ringService.startRingtone();
         set({
             status: 'incoming',
             callType: payload.callType,
@@ -163,6 +174,7 @@ export const useCallStore = create<CallState>((set, get) => ({
     handleRinging: () => {
         console.log('🔔 Call is ringing on the other side');
         if (get().status === 'calling') {
+            ringService.startRingback();
             set({ status: 'ringing' });
         }
     },
@@ -180,6 +192,7 @@ export const useCallStore = create<CallState>((set, get) => ({
     toggleMute: () => {
         const newMuted = !get().isMuted;
         webRTCService.toggleAudio(!newMuted);
+        InCallManager.setMicrophoneMute(newMuted);
         set({ isMuted: newMuted });
     },
 
@@ -187,6 +200,12 @@ export const useCallStore = create<CallState>((set, get) => ({
         const newVideoEnabled = !get().isVideoEnabled;
         webRTCService.toggleVideo(newVideoEnabled);
         set({ isVideoEnabled: newVideoEnabled });
+    },
+
+    toggleSpeaker: () => {
+        const newSpeakerOn = !get().isSpeakerOn;
+        webRTCService.toggleSpeaker(newSpeakerOn);
+        set({ isSpeakerOn: newSpeakerOn });
     },
 
     switchCamera: () => {
@@ -342,6 +361,8 @@ export const useCallStore = create<CallState>((set, get) => ({
         // Call State Event Handlers
         const handleCallAccepted = (payload: { fromUserId: string }) => {
             console.log('✅ Call accepted by:', payload.fromUserId);
+            InCallManager.stopRingback();
+            ringService.stopRingback();
             set({ status: 'connected', error: null });
         };
 
@@ -370,6 +391,10 @@ export const useCallStore = create<CallState>((set, get) => ({
 
     reset: () => {
         console.log('🔄 Resetting call state');
+        InCallManager.stopRingback();
+        InCallManager.stopRingtone();
+        ringService.cleanup();
+        InCallManager.stop();
         webRTCService.cleanup(); // Clean up WebRTC peer connection
         set({
             status: 'idle',
@@ -379,6 +404,7 @@ export const useCallStore = create<CallState>((set, get) => ({
             otherUserName: null,
             localStream: null,
             remoteStream: null,
+            isSpeakerOn: false,
             error: null,
             pendingOffer: null,
         });
@@ -408,6 +434,7 @@ export const useCallStore = create<CallState>((set, get) => ({
             otherUserName: null,
             localStream: null,
             remoteStream: null,
+            isSpeakerOn: false,
             error: null,
             pendingOffer: null,
         });
