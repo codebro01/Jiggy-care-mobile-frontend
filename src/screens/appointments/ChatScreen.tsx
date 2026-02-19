@@ -90,6 +90,7 @@ export function ChatScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     let mounted = true;
+    let callListenersInitialized = false;
 
     const initializeChat = async () => {
       try {
@@ -108,7 +109,6 @@ export function ChatScreen({ navigation, route }: Props) {
           appointment.consultantId,
           appointment.patientId
         );
-
 
         if (!mounted) return;
 
@@ -135,8 +135,12 @@ export function ChatScreen({ navigation, route }: Props) {
         // 5. Load existing messages
         await loadMessages(conversation.id);
 
-        // 6. Initialize call event listeners
-        useCallStore.getState().initialize();
+        // 6. Initialize call event listeners ONLY ONCE
+        if (!callListenersInitialized) {
+          console.log('🎧 Initializing call listeners...');
+          useCallStore.getState().initialize();
+          callListenersInitialized = true;
+        }
 
         setIsConnecting(false);
       } catch (error: any) {
@@ -169,7 +173,9 @@ export function ChatScreen({ navigation, route }: Props) {
     return () => {
       mounted = false;
       setCurrentConversation(null);
-      useCallStore.getState().cleanup();
+      // ✅ DON'T call cleanup() here - it removes listeners needed for calls
+      // Only cleanup when user actually leaves the app or logs out
+      useCallStore.getState().reset(); // Just reset state, keep listeners
       // Don't disconnect socket here as it might be used by other screens
     };
   }, [appointment.bookingId]);

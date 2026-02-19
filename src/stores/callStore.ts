@@ -39,6 +39,9 @@ interface CallState {
 
 }
 
+
+let isInitialized = false;
+
 export const useCallStore = create<CallState>((set, get) => ({
     status: 'idle',
     callType: null,
@@ -191,26 +194,35 @@ export const useCallStore = create<CallState>((set, get) => ({
         set((state) => ({ isFrontCamera: !state.isFrontCamera }));
     },
 
-    reset: () => {
-        console.log('🔄 Resetting call state');
-        webRTCService.cleanup();
-        set({
-            status: 'idle',
-            callType: null,
-            conversationId: null,
-            otherUserId: null,
-            otherUserName: null,
-            localStream: null,
-            remoteStream: null,
-            isMuted: false,
-            isVideoEnabled: true,
-            error: null,
-        });
-    },
+    // reset: () => {
+    //     console.log('🔄 Resetting call state');
+    //     webRTCService.cleanup();
+    //     set({
+    //         status: 'idle',
+    //         callType: null,
+    //         conversationId: null,
+    //         otherUserId: null,
+    //         otherUserName: null,
+    //         localStream: null,
+    //         remoteStream: null,
+    //         isMuted: false,
+    //         isVideoEnabled: true,
+    //         error: null,
+    //     });
+    // },
 
     clearError: () => set({ error: null }),
 
     initialize: () => {
+        console.log('🎬 Initializing call event listeners');
+
+        if (isInitialized) {
+            console.log('⚠️ Already initialized, skipping duplicate registration');
+            return;
+        }
+
+
+        isInitialized = true;
         console.log('🎬 Initializing call event listeners');
 
         // WebRTC Signaling Event Handlers
@@ -306,6 +318,8 @@ export const useCallStore = create<CallState>((set, get) => ({
         };
 
         const handleWebRTCAnswer = async (payload: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
+            console.log('🚨🚨🚨 ANSWER HANDLER CALLED! 🚨🚨🚨');  // ← ADD THIS FIRST LINE
+            console.log('📥 📥 📥 ANSWER RECEIVED FROM:', payload.fromUserId);
             try {
                 console.log('📥 Received WebRTC answer from:', payload.fromUserId);
                 await webRTCService.setRemoteDescription(payload.answer);
@@ -353,16 +367,50 @@ export const useCallStore = create<CallState>((set, get) => ({
         console.log('✅ Call event listeners initialized');
     },
 
+
+    reset: () => {
+        console.log('🔄 Resetting call state');
+        webRTCService.cleanup(); // Clean up WebRTC peer connection
+        set({
+            status: 'idle',
+            callType: null,
+            conversationId: null,
+            otherUserId: null,
+            otherUserName: null,
+            localStream: null,
+            remoteStream: null,
+            error: null,
+            pendingOffer: null,
+        });
+        // ✅ DO NOT remove socket listeners here
+    },
+
     cleanup: () => {
         console.log('🧹 Cleaning up call event listeners');
+        isInitialized = false;  // ✅ Only reset here
 
-        // Note: We need to store references to the handlers to properly remove them
-        // For now, we'll rely on the socket service's off methods with empty callbacks
-        // A better approach would be to store handler references, but that requires refactoring
-
-        // Clean up WebRTC resources
         webRTCService.cleanup();
 
+        // Remove socket listeners
+        const state = get() as any;
+        if (state.handleWebRTCOfferRef) socketService.offWebRTCOffer(state.handleWebRTCOfferRef);
+        if (state.handleWebRTCAnswerRef) socketService.offWebRTCAnswer(state.handleWebRTCAnswerRef);
+        if (state.handleWebRTCIceCandidateRef) socketService.offWebRTCIceCandidate(state.handleWebRTCIceCandidateRef);
+        if (state.handleCallAcceptedRef) socketService.offCallAccepted(state.handleCallAcceptedRef);
+        if (state.handleCallRejectedRef) socketService.offCallRejected(state.handleCallRejectedRef);
+        if (state.handleCallEndedRef) socketService.offCallEnded(state.handleCallEndedRef);
+
+        set({
+            status: 'idle',
+            callType: null,
+            conversationId: null,
+            otherUserId: null,
+            otherUserName: null,
+            localStream: null,
+            remoteStream: null,
+            error: null,
+            pendingOffer: null,
+        });
         console.log('✅ Call cleanup complete');
     },
 }));
