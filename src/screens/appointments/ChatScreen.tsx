@@ -37,7 +37,7 @@ import * as Haptics from 'expo-haptics';
 import { useAppTheme } from '../../theme';
 import { useChatStore } from '../../stores';
 import { Avatar } from '../../components';
-import { AppointmentsStackParamList } from '../../navigation/types';
+import { AppointmentsStackParamList, HomeStackParamList } from '../../navigation/types';
 import { Message } from '../../types';
 import { chatService } from '@/services/chat.service';
 import { socketService } from '@/services/socket.service';
@@ -45,11 +45,12 @@ import { useAuthStore } from '@/stores/authStore';
 import { CallModal } from '@/components/CallModal';
 import { useCallStore } from '@/stores/callStore';
 
-type ChatScreenNavigationProp = NativeStackNavigationProp<
-  AppointmentsStackParamList,
-  'Chat'
->;
-type ChatScreenRouteProp = RouteProp<AppointmentsStackParamList, 'Chat'>;
+type ChatScreenNavigationProp =
+  | NativeStackNavigationProp<AppointmentsStackParamList, 'Chat'>
+  | NativeStackNavigationProp<HomeStackParamList, 'ChatScreen'>;
+type ChatScreenRouteProp =
+  | RouteProp<AppointmentsStackParamList, 'Chat'>
+  | RouteProp<HomeStackParamList, 'ChatScreen'>;
 
 interface Props {
   navigation: ChatScreenNavigationProp;

@@ -26,7 +26,7 @@ export function AppNavigator() {
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />
         )}
-        <Stack.Screen name="ChatScreen" component={ChatScreen} />
+        <Stack.Screen name="ChatScreen" component={ChatScreen as any} />
 
       </Stack.Navigator>
     </NavigationContainer>

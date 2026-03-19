@@ -17,7 +17,7 @@ export type AuthStackParamList = {
 export type HomeStackParamList = {
     HomeScreen: undefined;
     Notifications: undefined;
-    ChatScreen: undefined
+    ChatScreen: { appointment: Appointment };
 };
 
 // Appointments Stack
