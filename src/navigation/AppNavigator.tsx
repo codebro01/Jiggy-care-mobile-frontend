@@ -11,6 +11,7 @@ import { RootStackParamList } from './types';
 
 import { AuthStack } from './AuthStack';
 import { TabNavigator } from './TabNavigator';
+import { ChatScreen } from '@/screens/appointments';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -25,6 +26,8 @@ export function AppNavigator() {
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />
         )}
+        <Stack.Screen name="ChatScreen" component={ChatScreen} />
+
       </Stack.Navigator>
     </NavigationContainer>
   );

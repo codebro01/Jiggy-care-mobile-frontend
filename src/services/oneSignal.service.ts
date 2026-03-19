@@ -9,11 +9,11 @@ export const initializeOneSignal = () => {
         console.error("OneSignal App ID is missing! Check your .env file.");
         return;
     }
+    // Enable verbose logging for debugging (remove in production)
+    OneSignal.Debug.setLogLevel(LogLevel.Verbose);
     // Initialize
     OneSignal.initialize(EXPO_PUBLIC_ONESIGNAL_APP_ID);
 
-    // Enable verbose logging for debugging (remove in production)
-    OneSignal.Debug.setLogLevel(LogLevel.Verbose);
 
 
     // Request permission

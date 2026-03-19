@@ -54,4 +54,10 @@ export type MainTabParamList = {
 export type RootStackParamList = {
     Auth: undefined;
     Main: undefined;
+    ChatScreen: {
+        conversationId: string;
+        callType: 'video' | 'audio';
+        isIncoming: boolean;
+        appointment?: Appointment;
+    };
 };
