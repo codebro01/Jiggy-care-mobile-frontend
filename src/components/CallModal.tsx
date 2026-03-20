@@ -96,6 +96,7 @@ export const CallModal = () => {
                             style={styles.localVideo}
                             objectFit="cover"
                             mirror={true}
+                            zOrder={1}
                         />
                     </View>
                 )}
@@ -217,6 +218,7 @@ const styles = StyleSheet.create({
         height: 150,
         borderRadius: 12,
         overflow: 'hidden',
+        zIndex: 999,     
         elevation: 5,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
