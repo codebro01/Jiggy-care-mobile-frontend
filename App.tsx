@@ -65,6 +65,8 @@ export default function App() {
               navigationRef.current?.navigate('ChatScreen', {
                 conversationId: data.conversationId,
                 callType: data.callType,
+                bookingId: data.bookingId,
+                fromUserId: data.fromUserId,
                 isIncoming: true,
               });
             }, 1000);

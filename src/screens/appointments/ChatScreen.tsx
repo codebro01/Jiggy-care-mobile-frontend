@@ -65,6 +65,9 @@ export function ChatScreen({ navigation, route }: Props) {
   const params = route.params as any;
   const initialAppointment = params.appointment;
   const bookingIdParam = params.bookingId;
+  const isIncomingParam = params.isIncoming;
+  const callTypeParam = params.callType;
+  const fromUserIdParam = params.fromUserId;
 
   const [appointment, setAppointment] = useState<Appointment | null>(initialAppointment || null);
   const { loadAppointments } = useAppointmentsStore();
@@ -183,6 +186,20 @@ export function ChatScreen({ navigation, route }: Props) {
         }
 
         setIsConnecting(false);
+
+        // Handle incoming call from push notification
+        if (isIncomingParam && user && fromUserIdParam) {
+          const callStoreState = useCallStore.getState();
+          // Synthesize incoming call event if missed while app was killed
+          if (callStoreState.status === 'idle') {
+            console.log('📱 Triggering incoming call from push notification data');
+            callStoreState.handleIncomingCall({
+              callType: callTypeParam || 'video',
+              conversationId: conversation.id,
+              fromUserId: fromUserIdParam,
+            });
+          }
+        }
       } catch (error: any) {
         console.error('❌ Chat initialization error:', error);
         if (mounted) {

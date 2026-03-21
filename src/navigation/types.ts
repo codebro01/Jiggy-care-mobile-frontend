@@ -59,6 +59,7 @@ export type RootStackParamList = {
         callType?: 'video' | 'audio';
         isIncoming?: boolean;
         bookingId?: string;
+        fromUserId?: string;
         appointment?: Appointment;
     };
 };
