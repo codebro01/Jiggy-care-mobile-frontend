@@ -56,8 +56,9 @@ export type RootStackParamList = {
     Main: undefined;
     ChatScreen: {
         conversationId: string;
-        callType: 'video' | 'audio';
-        isIncoming: boolean;
+        callType?: 'video' | 'audio';
+        isIncoming?: boolean;
+        bookingId?: string;
         appointment?: Appointment;
     };
 };

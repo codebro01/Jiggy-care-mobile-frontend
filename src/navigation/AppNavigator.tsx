@@ -9,6 +9,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '../stores';
 import { RootStackParamList } from './types';
 
+import { navigationRef } from '../../App';
 import { AuthStack } from './AuthStack';
 import { TabNavigator } from './TabNavigator';
 import { ChatScreen } from '@/screens/appointments';
@@ -19,7 +20,7 @@ export function AppNavigator() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           <Stack.Screen name="Main" component={TabNavigator} />

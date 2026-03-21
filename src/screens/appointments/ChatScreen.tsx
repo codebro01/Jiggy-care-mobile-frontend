@@ -37,20 +37,23 @@ import * as Haptics from 'expo-haptics';
 import { useAppTheme } from '../../theme';
 import { useChatStore } from '../../stores';
 import { Avatar } from '../../components';
-import { AppointmentsStackParamList, HomeStackParamList } from '../../navigation/types';
-import { Message } from '../../types';
+import { AppointmentsStackParamList, HomeStackParamList, RootStackParamList } from '../../navigation/types';
+import { Message, Appointment } from '../../types';
 import { chatService } from '@/services/chat.service';
 import { socketService } from '@/services/socket.service';
 import { useAuthStore } from '@/stores/authStore';
 import { CallModal } from '@/components/CallModal';
 import { useCallStore } from '@/stores/callStore';
+import { useAppointmentsStore } from '@/stores/appointmentsStore';
 
 type ChatScreenNavigationProp =
   | NativeStackNavigationProp<AppointmentsStackParamList, 'Chat'>
-  | NativeStackNavigationProp<HomeStackParamList, 'ChatScreen'>;
+  | NativeStackNavigationProp<HomeStackParamList, 'ChatScreen'>
+  | NativeStackNavigationProp<RootStackParamList, 'ChatScreen'>;
 type ChatScreenRouteProp =
   | RouteProp<AppointmentsStackParamList, 'Chat'>
-  | RouteProp<HomeStackParamList, 'ChatScreen'>;
+  | RouteProp<HomeStackParamList, 'ChatScreen'>
+  | RouteProp<RootStackParamList, 'ChatScreen'>;
 
 interface Props {
   navigation: ChatScreenNavigationProp;
@@ -59,7 +62,13 @@ interface Props {
 
 export function ChatScreen({ navigation, route }: Props) {
   const theme = useAppTheme();
-  const { appointment } = route.params;
+  const params = route.params as any;
+  const initialAppointment = params.appointment;
+  const bookingIdParam = params.bookingId;
+
+  const [appointment, setAppointment] = useState<Appointment | null>(initialAppointment || null);
+  const { loadAppointments } = useAppointmentsStore();
+
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { alert, showSuccess, showError, showWarning, hideAlert } = useAlert();
@@ -89,7 +98,37 @@ export function ChatScreen({ navigation, route }: Props) {
 
 
 
+  // Load appointment if coming from notification
   useEffect(() => {
+    let active = true;
+    if (!initialAppointment && bookingIdParam) {
+      const fetchAppointment = async () => {
+        try {
+          setIsConnecting(true);
+          let found = useAppointmentsStore.getState().appointments.find(a => a.bookingId === bookingIdParam);
+          if (!found) {
+            await loadAppointments();
+            if (!active) return;
+            found = useAppointmentsStore.getState().appointments.find(a => a.bookingId === bookingIdParam);
+          }
+          if (found) {
+            setAppointment(found);
+          } else {
+            showError('Error', 'Could not find appointment details');
+            navigation.goBack();
+          }
+        } catch (error) {
+          showError('Error', 'Failed to load appointment details');
+          navigation.goBack();
+        }
+      };
+      fetchAppointment();
+    }
+    return () => { active = false; };
+  }, [initialAppointment, bookingIdParam]);
+
+  useEffect(() => {
+    if (!appointment) return;
     let mounted = true;
     let callListenersInitialized = false;
 
@@ -179,7 +218,7 @@ export function ChatScreen({ navigation, route }: Props) {
       useCallStore.getState().reset(); // Just reset state, keep listeners
       // Don't disconnect socket here as it might be used by other screens
     };
-  }, [appointment.bookingId]);
+  }, [appointment?.bookingId]);
 
 
   useEffect(() => {
@@ -282,7 +321,7 @@ export function ChatScreen({ navigation, route }: Props) {
   }, []);
 
   const handleVideoCall = () => {
-    if (!currentConversation || !user) return;
+    if (!currentConversation || !user || !appointment) return;
     const peerId = currentConversation.patientId === user.id ? currentConversation.consultantId : currentConversation.patientId;
     if (!peerId) {
       showError('Cannot initiate call', 'Peer ID not found');
@@ -292,7 +331,7 @@ export function ChatScreen({ navigation, route }: Props) {
   };
 
   const handleVoiceCall = () => {
-    if (!currentConversation || !user) return;
+    if (!currentConversation || !user || !appointment) return;
     const peerId = currentConversation.patientId === user.id ? currentConversation.consultantId : currentConversation.patientId;
     if (!peerId) {
       showError('Cannot initiate call', 'Peer ID not found');
@@ -318,7 +357,7 @@ export function ChatScreen({ navigation, route }: Props) {
       >
         {!isOwn && showAvatar && (
           <Avatar
-            name={appointment.patientName}
+            name={appointment?.patientName || ''}
             size="sm"
             style={styles.messageAvatar}
           />
@@ -366,7 +405,7 @@ export function ChatScreen({ navigation, route }: Props) {
   };
 
   const renderTypingIndicator = () => {
-    if (!isTyping) return null;
+    if (!isTyping || !appointment) return null;
 
     // Get first name from patient name
     const firstName = appointment.patientName.split(' ')[0];
@@ -403,6 +442,21 @@ export function ChatScreen({ navigation, route }: Props) {
   //     </SafeAreaView>
   //   );
   // }
+
+  if (!appointment) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background.primary }]}
+        edges={['top', 'bottom']}
+      >
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: theme.colors.text.secondary }]}>
+            Loading chat...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView

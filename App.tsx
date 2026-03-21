@@ -68,6 +68,14 @@ export default function App() {
                 isIncoming: true,
               });
             }, 1000);
+          } else if (data?.category === 'Message') {
+             // Handle chat message notification click
+             setTimeout(() => {
+              navigationRef.current?.navigate('ChatScreen', {
+                conversationId: data.conversationId,
+                bookingId: data.bookingId,
+              });
+            }, 1000);
           }
         });
 
