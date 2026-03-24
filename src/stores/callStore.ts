@@ -44,9 +44,67 @@ interface CallState {
 }
 
 
+export const processOffer = async (
+    payload: { fromUserId: string; offer: RTCSessionDescriptionInit },
+    get: () => CallState,
+    set: (partial: Partial<CallState>) => void
+) => {
+    const state = get() as any;
+    state.isProcessingOffer = true;
+    console.log('🔒 Locked offer processing');
+
+    try {
+        const { callType } = get();
+
+        if (!webRTCService.localStream) {
+            console.log('🎥 Starting local stream for answer...');
+            const stream = await webRTCService.startLocalStream(callType === 'video', true);
+            set({ localStream: stream });
+        }
+
+        if (!webRTCService.peerConnection) {
+            console.log('🛠 Creating PeerConnection for answer...');
+            webRTCService.createPeerConnection(
+                (candidate) => {
+                    console.log('🧊 ICE Candidate generated (answerer)');
+                    socketService.sendWebRTCIceCandidate({
+                        toUserId: payload.fromUserId,
+                        candidate: candidate.toJSON(),
+                    });
+                },
+                (stream) => {
+                    console.log('📺 Remote stream received (answerer)');
+                    set({ remoteStream: stream });
+                }
+            );
+        }
+
+        console.log('🔍 Setting remote description...');
+        await webRTCService.setRemoteDescription(payload.offer);
+
+        console.log('📜 Creating Answer...');
+        const answer = await webRTCService.createAnswer();
+
+        console.log('📤 Sending Answer to:', payload.fromUserId);
+        socketService.sendWebRTCAnswer({ toUserId: payload.fromUserId, answer });
+
+        console.log('✅ Answer sent successfully');
+    } catch (error: any) {
+        console.error('❌ Failed to process offer:', error);
+        set({ error: error.message || 'Failed to process call' });
+    } finally {
+        setTimeout(() => {
+            (get() as any).isProcessingOffer = false;
+            console.log('🔓 Unlocked offer processing');
+        }, 1000);
+    }
+};
+
+
+
 let isInitialized = false;
 
-export const useCallStore = create<CallState>((set, get) => ({
+export const useCallStore = create<CallState>()((set, get) => ({
     status: 'idle',
     callType: null,
     conversationId: null,
@@ -116,7 +174,7 @@ export const useCallStore = create<CallState>((set, get) => ({
     },
 
     acceptCall: async () => {
-        const { otherUserId, callType } = get();
+        const { otherUserId, callType, pendingOffer } = get();
         if (!otherUserId) return;
 
         try {
@@ -135,6 +193,14 @@ export const useCallStore = create<CallState>((set, get) => ({
 
             // Notify the other peer that we accepted
             socketService.acceptCall({ toUserId: otherUserId });
+
+                if (pendingOffer) {
+            console.log('📦 Processing buffered offer after accept...');
+            set({ pendingOffer: null });
+            await processOffer(pendingOffer, get , set);
+        } else {
+            console.warn('⚠️ No buffered offer — waiting for offer to arrive...');
+        }
         } catch (error: any) {
             console.error('❌ Failed to accept call:', error);
             set({ error: error.message || 'Failed to accept call' });
@@ -246,8 +312,21 @@ export const useCallStore = create<CallState>((set, get) => ({
 
         // WebRTC Signaling Event Handlers
         const handleWebRTCOffer = async (payload: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
-            // Use a flag to prevent processing multiple offers simultaneously
+            const { status, callType } = get();
             const state = get() as any;
+
+            // ✅ If not accepted yet — buffer it, NEVER drop it
+            if (status === 'idle' || status === 'incoming') {
+                console.log('📦 Buffering offer — status is:', status);
+                set({ pendingOffer: payload });
+                return;
+            }
+
+            if (status !== 'connected') {
+                console.log('⚠️ Ignoring offer - unexpected status:', status);
+                return;
+            }
+
             if (state.isProcessingOffer) {
                 console.log('⚠️ Already processing an offer, ignoring duplicate');
                 return;
@@ -259,13 +338,8 @@ export const useCallStore = create<CallState>((set, get) => ({
 
             try {
                 console.log('📥 Received WebRTC offer from:', payload.fromUserId);
-                const { status, callType } = get();
 
-                // Only process offers when we're in 'incoming' or 'connected' state
-                if (status !== 'incoming' && status !== 'connected') {
-                    console.log('⚠️ Ignoring offer - not in receiving state, current status:', status);
-                    return;
-                }
+                // Check if we already have a peer connection in the wrong state
 
                 // Check if we already have a peer connection in the wrong state
                 const pc = webRTCService.peerConnection;
@@ -396,6 +470,7 @@ export const useCallStore = create<CallState>((set, get) => ({
         ringService.cleanup();
         InCallManager.stop();
         webRTCService.cleanup(); // Clean up WebRTC peer connection
+        (useCallStore.getState() as any).isProcessingOffer = false;
         set({
             status: 'idle',
             callType: null,
@@ -416,7 +491,6 @@ export const useCallStore = create<CallState>((set, get) => ({
         isInitialized = false;  // ✅ Only reset here
 
         webRTCService.cleanup();
-
         // Remove socket listeners
         const state = get() as any;
         if (state.handleWebRTCOfferRef) socketService.offWebRTCOffer(state.handleWebRTCOfferRef);

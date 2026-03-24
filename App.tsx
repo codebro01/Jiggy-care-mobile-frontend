@@ -44,35 +44,37 @@ function AppContent() {
 
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
+  const activeCallRef = React.useRef<string | null>(null);
 
   useEffect(() => {
 
     async function prepare() {
       try {
-            console.log('1. Starting prepare...');
+        console.log('1. Starting prepare...');
 
         initializeOneSignal();
-    console.log('2. OneSignal done...');
+        console.log('2. OneSignal done...');
 
 
-// When user taps notification (app backgrounded or killed)
-        OneSignal.Notifications.addEventListener('click', (event) => {
+        OneSignal.Notifications.addEventListener('click', (event: any) => {
           const data = event.notification.additionalData as any;
 
           if (data?.category === 'Call') {
-            // Small delay to ensure navigator is ready
-            setTimeout(() => {
-              navigationRef.current?.navigate('ChatScreen', {
-                conversationId: data.conversationId,
-                callType: data.callType,
-                bookingId: data.bookingId,
-                fromUserId: data.fromUserId,
-                isIncoming: true,
-              });
-            }, 1000);
+            // ✅ no event.preventDefault() here — that's only for foregroundWillDisplay
+            if (activeCallRef.current !== data.conversationId) {
+              activeCallRef.current = data.conversationId;
+              setTimeout(() => {
+                navigationRef.current?.navigate('ChatScreen', {
+                  conversationId: data.conversationId,
+                  callType: data.callType,
+                  bookingId: data.bookingId,
+                  fromUserId: data.fromUserId,
+                  isIncoming: true,
+                });
+              }, 1000);
+            }
           } else if (data?.category === 'Message') {
-             // Handle chat message notification click
-             setTimeout(() => {
+            setTimeout(() => {
               navigationRef.current?.navigate('ChatScreen', {
                 conversationId: data.conversationId,
                 bookingId: data.bookingId,
@@ -82,22 +84,28 @@ export default function App() {
         });
 
         // ✅ When notification arrives while app is in foreground
-        OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event) => {
+        OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event: any) => {
           const data = event.notification.additionalData as any;
 
           if (data?.category === 'Call') {
-            // Suppress the banner, show your own call UI instead
-            event.preventDefault();
-            navigationRef.current?.navigate('ChatScreen', {
-              conversationId: data.conversationId,
-              callType: data.callType,
-              isIncoming: true,
-            });
+            event.preventDefault(); // suppress OS banner
+
+            // ✅ Only navigate once per unique call
+            if (activeCallRef.current !== data.conversationId) {
+              activeCallRef.current = data.conversationId;
+              navigationRef.current?.navigate('ChatScreen', {
+                conversationId: data.conversationId,
+                callType: data.callType,
+                bookingId: data.bookingId,     // ✅ was missing
+                fromUserId: data.fromUserId,   // ✅ was missing
+                isIncoming: true,
+              });
+            }
           } else {
-            // Show normally for messages and other notifications
             event.notification.display();
           }
         });
+
 
 
 
@@ -112,7 +120,7 @@ export default function App() {
           Manrope_800ExtraBold,
         });
 
-            console.log('3. Fonts done...');
+        console.log('3. Fonts done...');
 
       } catch (e) {
         console.warn('Error loading fonts:', e);
