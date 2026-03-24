@@ -85,15 +85,14 @@ function buildRingbackWAV(): string {
     return encodeWAV(samples, sr);
 }
 
-/** Ringtone: pleasant two‐tone pattern — 800Hz 200ms, 1000Hz 200ms, silence 300ms, repeat x4 */
+/** Ringtone: friendly F-Major chord pattern — 800ms chord, 1000ms silence */
 function buildRingtoneWAV(): string {
     const sr = 8000;
     let samples: number[] = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 2; i++) {
         samples = samples.concat(
-            generateTone([800], 200, sr),
-            generateTone([1000], 200, sr),
-            generateSilence(300, sr),
+            generateTone([349.23, 440.0, 523.25], 800, sr), // F Major chord (softer)
+            generateSilence(1000, sr),
         );
     }
     return encodeWAV(samples, sr);
@@ -105,6 +104,7 @@ class RingService {
     private ringbackSound: Audio.Sound | null = null;
     private ringtoneSound: Audio.Sound | null = null;
     private vibrationInterval: ReturnType<typeof setInterval> | null = null;
+    private isStartingRingtone = false;
 
     private ringbackBase64: string | null = null;
     private ringtoneBase64: string | null = null;
@@ -142,21 +142,26 @@ class RingService {
     }
 
     async stopRingback() {
-        try {
-            if (this.ringbackSound) {
-                await this.ringbackSound.stopAsync();
-                await this.ringbackSound.unloadAsync();
-                this.ringbackSound = null;
+        const sound = this.ringbackSound;
+        this.ringbackSound = null;
+        if (sound) {
+            try {
+                console.log('🔕 Unloading ringback tone...');
+                await sound.stopAsync();
+                await sound.unloadAsync();
                 console.log('🔕 Ringback tone stopped');
+            } catch (err) {
+                console.error('Failed to stop ringback:', err);
             }
-        } catch (err) {
-            console.error('Failed to stop ringback:', err);
         }
     }
 
     // ── Ringtone (incoming call) ────────────────────────────────────
 
     async startRingtone() {
+        if (this.isStartingRingtone) return;
+        this.isStartingRingtone = true;
+
         try {
             await this.stopRingtone();
 
@@ -168,6 +173,7 @@ class RingService {
                 staysActiveInBackground: true,
             });
 
+            console.log('📱 Creating ringtone sound...');
             const { sound } = await Audio.Sound.createAsync(
                 { uri: `data:audio/wav;base64,${this.ringtoneBase64}` },
                 { isLooping: true, volume: 1.0 }
@@ -177,8 +183,7 @@ class RingService {
 
             // Also vibrate in a pattern
             if (Platform.OS === 'android') {
-                // Android: vibrate pattern [wait, vibrate, wait, vibrate...]
-                Vibration.vibrate([0, 500, 500, 500], true);
+                Vibration.vibrate([0, 500, 1000, 500], true);
             } else {
                 this.vibrationInterval = setInterval(() => Vibration.vibrate(), 2000);
             }
@@ -186,24 +191,28 @@ class RingService {
             console.log('📱 Ringtone started');
         } catch (err) {
             console.error('Failed to start ringtone:', err);
+        } finally {
+            this.isStartingRingtone = false;
         }
     }
 
     async stopRingtone() {
-        try {
-            if (this.ringtoneSound) {
-                await this.ringtoneSound.stopAsync();
-                await this.ringtoneSound.unloadAsync();
-                this.ringtoneSound = null;
+        const sound = this.ringtoneSound;
+        this.ringtoneSound = null;
+        if (sound) {
+            try {
+                console.log('📱 Unloading ringtone...');
+                await sound.stopAsync();
+                await sound.unloadAsync();
+                console.log('📱 Ringtone stopped');
+            } catch (err) {
+                console.error('Failed to stop ringtone:', err);
             }
-            Vibration.cancel();
-            if (this.vibrationInterval) {
-                clearInterval(this.vibrationInterval);
-                this.vibrationInterval = null;
-            }
-            console.log('📱 Ringtone stopped');
-        } catch (err) {
-            console.error('Failed to stop ringtone:', err);
+        }
+        Vibration.cancel();
+        if (this.vibrationInterval) {
+            clearInterval(this.vibrationInterval);
+            this.vibrationInterval = null;
         }
     }
 

@@ -5,6 +5,7 @@ import { webRTCService } from '@/services/webrtc.service';
 import { ringService } from '@/services/ring.service';
 import { CallIncomingPayload, CallType } from '@/types';
 import InCallManager from 'react-native-incall-manager';
+import { useAppointmentsStore } from './appointmentsStore';
 
 type CallStatus = 'idle' | 'calling' | 'ringing' | 'incoming' | 'connected' | 'ended';
 
@@ -40,7 +41,7 @@ interface CallState {
     clearError: () => void;
     initialize: () => void;
     cleanup: () => void;
-
+    handleCallMissed: (payload: { fromUserId: string; conversationId: string }) => void;
 }
 
 
@@ -228,11 +229,22 @@ export const useCallStore = create<CallState>()((set, get) => ({
     handleIncomingCall: (payload) => {
         console.log('📞 Incoming call received:', payload);
         ringService.startRingtone();
+
+        // Try to find the name from the appointments store
+        const appointments = useAppointmentsStore.getState().appointments;
+        const appointment = appointments.find(a =>
+            a.bookingId === payload.conversationId ||
+            a.patientId === payload.fromUserId
+        );
+
+        const name = appointment ? appointment.patientName : 'Unknown';
+
         set({
             status: 'incoming',
             callType: payload.callType,
             conversationId: payload.conversationId,
             otherUserId: payload.fromUserId,
+            otherUserName: name,
             error: null,
         });
     },
@@ -247,6 +259,15 @@ export const useCallStore = create<CallState>()((set, get) => ({
 
     handleStopRinging: () => {
         console.log('🔕 Stop ringing');
+        ringService.stopRingtone();
+        ringService.stopRingback();
+        InCallManager.stopRingtone();
+        InCallManager.stopRingback();
+    },
+
+    handleCallMissed: (payload) => {
+        console.log('📵 Call missed from:', payload.fromUserId);
+        get().reset();
     },
 
     handleNoAnswer: () => {
@@ -309,6 +330,8 @@ export const useCallStore = create<CallState>()((set, get) => ({
 
         isInitialized = true;
         console.log('🎬 Initializing call event listeners');
+
+        const state = get() as any;
 
         // WebRTC Signaling Event Handlers
         const handleWebRTCOffer = async (payload: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
@@ -451,6 +474,16 @@ export const useCallStore = create<CallState>()((set, get) => ({
             get().reset();
         };
 
+        // Save references for cleanup
+        state.handleWebRTCOfferRef = handleWebRTCOffer;
+        state.handleWebRTCAnswerRef = handleWebRTCAnswer;
+        state.handleWebRTCIceCandidateRef = handleWebRTCIceCandidate;
+        state.handleCallAcceptedRef = handleCallAccepted;
+        state.handleCallRejectedRef = handleCallRejected;
+        state.handleCallEndedRef = handleCallEnded;
+        state.handleCallMissedRef = get().handleCallMissed;
+        state.handleStopRingingRef = get().handleStopRinging;
+
         // Register event listeners
         socketService.onWebRTCOffer(handleWebRTCOffer);
         socketService.onWebRTCAnswer(handleWebRTCAnswer);
@@ -458,6 +491,8 @@ export const useCallStore = create<CallState>()((set, get) => ({
         socketService.onCallAccepted(handleCallAccepted);
         socketService.onCallRejected(handleCallRejected);
         socketService.onCallEnded(handleCallEnded);
+        socketService.onCallMissed(get().handleCallMissed);
+        socketService.onCallStopRinging(get().handleStopRinging);
 
         console.log('✅ Call event listeners initialized');
     },
@@ -499,6 +534,8 @@ export const useCallStore = create<CallState>()((set, get) => ({
         if (state.handleCallAcceptedRef) socketService.offCallAccepted(state.handleCallAcceptedRef);
         if (state.handleCallRejectedRef) socketService.offCallRejected(state.handleCallRejectedRef);
         if (state.handleCallEndedRef) socketService.offCallEnded(state.handleCallEndedRef);
+        if (state.handleCallMissedRef) socketService.offCallMissed(state.handleCallMissedRef);
+        if (state.handleStopRingingRef) socketService.offCallStopRinging(state.handleStopRingingRef);
 
         set({
             status: 'idle',
