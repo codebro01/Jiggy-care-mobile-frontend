@@ -81,7 +81,7 @@ export function SplashScreen({ navigation }: Props) {
 
       <Animated.View style={textAnimatedStyle}>
         <Text style={[styles.title, { fontFamily: theme.fontFamily.bold }]}>
-          Jiggy Care
+          Jigicare
         </Text>
         <Text style={[styles.subtitle, { fontFamily: theme.fontFamily.regular }]}>
           Healthcare Consultant

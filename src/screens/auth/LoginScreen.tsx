@@ -136,6 +136,7 @@ const { signIn } = useGoogleAuth();
 
       // Send token to backend
       const response = await authService.googleLogin(idToken);
+      console.log('response', response)
       setUser({
         id: response.data.id,
         email: response.data.email,
