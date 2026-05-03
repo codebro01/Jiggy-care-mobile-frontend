@@ -40,11 +40,11 @@ type FilterType = 'upcoming' | 'completed' | 'cancelled' | 'in_progress' | 'pend
 
 const filters: { key: FilterType; label: string }[] = [
   { key: 'upcoming', label: 'Upcoming' },
-  { key: 'completed', label: 'Completed' },
-  { key: 'cancelled', label: 'Cancelled' },
   { key: 'in_progress', label: 'in_progress' },
-  { key: 'pending_confirmation', label: 'pending_confirmation' },
+  { key: 'cancelled', label: 'Cancelled' },
   { key: 'no_show', label: 'no_show' },
+  { key: 'pending_confirmation', label: 'pending_confirmation' },
+  { key: 'completed', label: 'Completed' },
 ];
 
 export function AppointmentsScreen({ navigation }: Props) {

@@ -60,6 +60,7 @@ export interface Appointment {
     date: string;
     duration: number; // in minutes
     status: AppointmentStatus;
+    symptoms: string;
 }
 
 // Chat Types
