@@ -187,6 +187,8 @@ export function AppointmentsScreen({ navigation }: Props) {
     </Card>
   );
 
+console.log('appointments', appointments)
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background.primary }]}

@@ -4,7 +4,6 @@
  */
 
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, AuthTokens, UserSignupData } from '../types';
 
@@ -15,6 +14,7 @@ interface AuthState {
     isAuthenticated: boolean;
     isLoading: boolean;
     error: string | null;
+    lastActiveAt: number | null;
 
     // Actions
     setUserSignupData: (userSignupData: UserSignupData ) => void;
@@ -25,20 +25,21 @@ interface AuthState {
     logout: () => void;
     clearError: () => void;
     setLoading: (loading: boolean) => void;
+    setLastActiveAt: (time: number | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
-    persist(
-        (set, get) => ({
-            user: null,
-            tokens: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null,
-            setUserSignupData: (userSignupData) => set({ userSignupData }),
-            setUser: (user) => set({ user, isAuthenticated: true }),
+    (set, get) => ({
+        user: null,
+        tokens: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        lastActiveAt: null,
+        setUserSignupData: (userSignupData) => set({ userSignupData }),
+        setUser: (user) => set({ user, isAuthenticated: true }),
 
-            setTokens: (tokens) => set({ tokens }),
+        setTokens: (tokens) => set({ tokens }),
 
             login: async (email: string, password: string) => {
                 set({ isLoading: true, error: null });
@@ -147,18 +148,10 @@ export const useAuthStore = create<AuthState>()(
                 });
             },
 
-            clearError: () => set({ error: null }),
+        clearError: () => set({ error: null }),
 
-            setLoading: (loading) => set({ isLoading: loading }),
-        }),
-        {
-            name: 'auth-storage',
-            storage: createJSONStorage(() => AsyncStorage),
-            partialize: (state) => ({
-                user: state.user,
-                tokens: state.tokens,
-                isAuthenticated: state.isAuthenticated,
-            }),
-        }
-    )
+        setLoading: (loading) => set({ isLoading: loading }),
+        
+        setLastActiveAt: (time) => set({ lastActiveAt: time }),
+    })
 );

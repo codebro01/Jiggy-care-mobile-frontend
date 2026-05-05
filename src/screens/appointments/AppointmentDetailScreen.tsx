@@ -157,6 +157,8 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
     </View>
   );
 
+  console.log("appointment dataa", appointment);
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background.primary }]}
@@ -242,6 +244,9 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
             hour12: true,
           })} />
           <InfoRow icon="hourglass" label="Duration" value={`${appointment.duration} hour`} />
+          {appointment.symptoms ? (
+            <InfoRow icon="document-text" label="Symptoms" value={appointment.symptoms} />
+          ) : null}
           {/* <InfoRow
             icon={
               appointment.type === 'video'
@@ -461,6 +466,7 @@ const styles = StyleSheet.create({
   },
   infoContent: {
     marginLeft: 12,
+    flex: 1,
   },
   infoLabel: {
     fontSize: 12,

@@ -1,5 +1,5 @@
-  import React, { useEffect } from 'react';
-  import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
+  import React, { useEffect, useState } from 'react';
+  import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
   import { SafeAreaView } from 'react-native-safe-area-context';
   import { Ionicons } from '@expo/vector-icons';
   import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -29,12 +29,22 @@
 
   export function NotificationsScreen({ navigation }: Props) {
     const theme = useAppTheme();
-    const { notifications, setNotifications, unreadCount } = useNotificationStore();
+    const { notifications, setNotifications, unreadCount, markAsRead } = useNotificationStore();
+    const [activeTab, setActiveTab] = useState<'unread' | 'read'>('unread');
+    const [refreshing, setRefreshing] = useState(false);
 
-    console.log('notifications', notifications)
-
-
-  console.log(notifications)
+    const onRefresh = async () => {
+      setRefreshing(true);
+      try {
+        const res = await notificationService.getNotifications();
+        const data = Array.isArray(res.data) ? res.data : res.data?.notifications || [];
+        setNotifications(data);
+      } catch (err) {
+        console.error('Failed to refresh notifications', err);
+      } finally {
+        setRefreshing(false);
+      }
+    };
     useEffect(() => {
       let eventSource: any;
 
@@ -120,8 +130,20 @@
       return `${days}d ago`;
     };
 
+    const handleNotificationPress = async (item: Notification) => {
+      if (item.status === 'unread') {
+        try {
+          await notificationService.updateNotificationStatus(item.id, 'read');
+          markAsRead(item.id);
+        } catch (error) {
+          console.error('Failed to update notification status', error);
+        }
+      }
+    };
+
     const renderNotification = ({ item }: { item: Notification }) => (
       <Pressable
+        onPress={() => handleNotificationPress(item)}
         style={[
           styles.notificationItem,
           {
@@ -217,12 +239,62 @@
           <View style={styles.placeholder} />
         </View>
 
+        {/* Tabs */}
+        <View style={styles.tabContainer}>
+          <Pressable
+            style={[
+              styles.tab,
+              activeTab === 'unread' && { borderBottomColor: theme.colors.accent, borderBottomWidth: 2 }
+            ]}
+            onPress={() => setActiveTab('unread')}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                {
+                  color: activeTab === 'unread' ? theme.colors.accent : theme.colors.text.secondary,
+                  fontFamily: activeTab === 'unread' ? theme.fontFamily.semiBold : theme.fontFamily.medium
+                }
+              ]}
+            >
+              Unread
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.tab,
+              activeTab === 'read' && { borderBottomColor: theme.colors.accent, borderBottomWidth: 2 }
+            ]}
+            onPress={() => setActiveTab('read')}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                {
+                  color: activeTab === 'read' ? theme.colors.accent : theme.colors.text.secondary,
+                  fontFamily: activeTab === 'read' ? theme.fontFamily.semiBold : theme.fontFamily.medium
+                }
+              ]}
+            >
+              Read
+            </Text>
+          </Pressable>
+        </View>
+
         <FlatList
-          data={notifications}
+          data={notifications.filter(n => n.status === activeTab)}
           keyExtractor={(item) => item.id}
           renderItem={renderNotification}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.colors.accent}
+              colors={[theme.colors.accent]}
+            />
+          }
         />
       </SafeAreaView>
     );
@@ -251,6 +323,20 @@
     },
     placeholder: {
       width: 44,
+    },
+    tabContainer: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      borderBottomColor: '#E5E7EB',
+      paddingHorizontal: 16,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    tabText: {
+      fontSize: 15,
     },
     listContent: {
       padding: 16,

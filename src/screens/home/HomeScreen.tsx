@@ -221,7 +221,7 @@ export function HomeScreen({ navigation }: Props) {
                 hour: 'numeric',
                 minute: '2-digit',
                 hour12: true,
-                timeZone: 'UTC'
+                timeZone: 'Africa/Lagos'
               })}
             </Text>
           </View>

@@ -6,7 +6,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { createNavigationContainerRef } from '@react-navigation/native';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, AppState } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
@@ -24,6 +24,7 @@ import { ThemeProvider, useTheme } from './src/theme';
 import { RootStackParamList } from './src/navigation';
 import { AppNavigator } from './src/navigation';
 import { OneSignal } from 'react-native-onesignal';
+import { useAuthStore } from './src/stores/authStore';
 
 // Prevent splash screen from auto-hiding
 
@@ -45,6 +46,33 @@ function AppContent() {
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
   const activeCallRef = React.useRef<string | null>(null);
+  const appState = React.useRef(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        // App has come to the foreground
+        const currentLastActive = useAuthStore.getState().lastActiveAt;
+        if (currentLastActive) {
+          const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+          if (Date.now() - currentLastActive > INACTIVITY_TIMEOUT) {
+            useAuthStore.getState().logout();
+          }
+        }
+      } else if (nextAppState === 'background') {
+        // App has gone to the background
+        useAuthStore.getState().setLastActiveAt(Date.now());
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
 

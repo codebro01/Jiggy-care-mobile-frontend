@@ -32,4 +32,12 @@ export const notificationService = {
             throw error;
         }
     },
+    updateNotificationStatus: async (notificationId: string, status: 'read' | 'unread') => {
+        try {
+            const response = await api.patch<any>(`/notification/update-notification/${notificationId}`, { status });
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
 };
