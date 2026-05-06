@@ -109,6 +109,7 @@ export interface Prescription {
     patientName: string;
     consultantId: string;
     name: string;
+    notes: string;
     dosage: number;
     mg: number;
     frequency: FrequencyType;

@@ -13,7 +13,7 @@ export const prescriptionService = {
             throw error;
         }
     },
-    createManyPrescriptions: async (data: { patientId: string, prescriptions: CreatePrescription[]}) => {
+    createManyPrescriptions: async (data: { patientId: string, prescriptions: CreatePrescription[] }) => {
 
 
         try {

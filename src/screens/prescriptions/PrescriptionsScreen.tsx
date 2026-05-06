@@ -131,6 +131,18 @@ export function PrescriptionsScreen({ navigation }: Props) {
           Pills Remaining ({item.pillsRemaining})
         </Text>
 
+        {item.notes ? (
+          <Text
+            style={[
+              styles.notesText,
+              { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.regular },
+            ]}
+            numberOfLines={3}
+          >
+            Notes: {item.notes}
+          </Text>
+        ) : null}
+
         {/* <Text
           style={[
             styles.medicationsLabel,
@@ -256,6 +268,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textTransform: 'uppercase',
     marginBottom: 8,
+  },
+  notesText: {
+    fontSize: 13,
+    marginTop: 4,
+    lineHeight: 18,
   },
   medicationItem: {
     flexDirection: 'row',
