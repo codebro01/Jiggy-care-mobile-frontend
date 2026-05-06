@@ -62,4 +62,8 @@ export type RootStackParamList = {
         fromUserId?: string;
         appointment?: Appointment;
     };
+    AppointmentDetail: {
+        appointment?: Appointment;
+        bookingId?: string;
+    };
 };

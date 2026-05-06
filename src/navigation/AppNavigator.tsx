@@ -13,6 +13,7 @@ import { navigationRef } from '../../App';
 import { AuthStack } from './AuthStack';
 import { TabNavigator } from './TabNavigator';
 import { ChatScreen } from '@/screens/appointments';
+import { AppointmentDetailScreen } from '@/screens/appointments/AppointmentDetailScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -28,8 +29,10 @@ export function AppNavigator() {
           <Stack.Screen name="Auth" component={AuthStack} />
         )}
         <Stack.Screen name="ChatScreen" component={ChatScreen as any} />
+        <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen as any} />
 
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
+

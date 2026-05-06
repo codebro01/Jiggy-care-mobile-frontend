@@ -10,6 +10,7 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,6 +35,7 @@ interface Props {
 interface MedicationField {
   id: string;
   name: string;
+  notes: string;
   dosage: number;
   frequency: string;
   duration: string;
@@ -46,7 +48,7 @@ export function CreatePrescriptionScreen({ navigation }: Props) {
   const [patientName, setPatientName] = useState('');
   const [patientId, setPatientId] = useState('');
   const [medications, setMedications] = useState<MedicationField[]>([
-    { id: '1', name: '', dosage: 2, frequency: '', duration: '', mg: 500 },
+    { id: '1', name: '', notes: '', dosage: 2, frequency: '', duration: '', mg: 500 },
   ]);
   const [patients, setPatients] = useState<any[]>([]);
 
@@ -70,7 +72,7 @@ export function CreatePrescriptionScreen({ navigation }: Props) {
   const addMedication = () => {
     setMedications([
       ...medications,
-      { id: Date.now().toString(), name: '', dosage: 0, frequency: '', duration: '', mg: 0 },
+      { id: Date.now().toString(), name: '', notes: '', dosage: 0, frequency: '', duration: '', mg: 0 },
     ]);
   };
 
@@ -103,6 +105,7 @@ export function CreatePrescriptionScreen({ navigation }: Props) {
       const prescriptions = medications.map(med => ({
         patientId,
         name: med.name,
+        notes: med.notes,
         duration: Number(med.duration), 
         dosage: Number(med.dosage), // Default dosage count (e.g. 1 pill)
         mg: Number(med.mg), // Dosage strength from form
@@ -263,7 +266,38 @@ export function CreatePrescriptionScreen({ navigation }: Props) {
               </View>
           
             </View>
-        
+
+            <Text
+              style={[
+                styles.notesLabel,
+                { color: theme.colors.text.primary, fontFamily: theme.fontFamily.medium },
+              ]}
+            >
+              Notes
+            </Text>
+            <View
+              style={[
+                styles.notesInputContainer,
+                {
+                  backgroundColor: theme.colors.surface.secondary,
+                  borderColor: theme.colors.border.primary,
+                },
+              ]}
+            >
+              <TextInput
+                style={[
+                  styles.notesInput,
+                  { color: theme.colors.text.primary, fontFamily: theme.fontFamily.regular },
+                ]}
+                placeholder="e.g., Take after meals, avoid alcohol..."
+                placeholderTextColor={theme.colors.text.tertiary}
+                multiline
+                numberOfLines={3}
+                value={med.notes}
+                onChangeText={(value) => updateMedication(med.id, 'notes', value)}
+                textAlignVertical="top"
+              />
+            </View>
           </Card>
         ))}
       </ScrollView>
@@ -388,5 +422,20 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  notesLabel: {
+    fontSize: 14,
+    marginBottom: 6,
+    marginTop: 8,
+  },
+  notesInputContainer: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    minHeight: 80,
+  },
+  notesInput: {
+    fontSize: 14,
+    minHeight: 60,
   },
 });

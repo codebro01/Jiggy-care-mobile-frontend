@@ -3,7 +3,7 @@
  * Shows patient details and allows starting chat
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
   Alert as RNAlert,
   TextInput,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,18 +26,19 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { useAppTheme } from '../../theme';
 import { Avatar, Button, Card, StatusBadge } from '../../components';
-import { AppointmentsStackParamList } from '../../navigation/types';
+import { AppointmentsStackParamList, RootStackParamList } from '../../navigation/types';
 import { appointmentService } from '../../services/appointment.service';
 import { useAlert, Alert } from '@/components/alert';
+import { Appointment } from '../../types';
 
 
 
 type AppointmentDetailScreenNavigationProp = NativeStackNavigationProp<
-  AppointmentsStackParamList,
+  AppointmentsStackParamList & RootStackParamList,
   'AppointmentDetail'
 >;
 type AppointmentDetailScreenRouteProp = RouteProp<
-  AppointmentsStackParamList,
+  AppointmentsStackParamList & RootStackParamList,
   'AppointmentDetail'
 >;
 
@@ -47,15 +49,41 @@ interface Props {
 
 export function AppointmentDetailScreen({ navigation, route }: Props) {
   const theme = useAppTheme();
-  const { appointment } = route.params;
+  const [appointment, setAppointment] = useState<Appointment | null>(
+    route.params?.appointment || null
+  );
+  const [isLoading, setIsLoading] = useState(!route.params?.appointment);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [isCompleteModalVisible, setIsCompleteModalVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { alert, showSuccess, showError, showWarning, hideAlert } = useAlert();
 
+  // Fetch appointment by bookingId when navigated from push notification
+  useEffect(() => {
+    const bookingId = route.params?.bookingId;
+    if (!route.params?.appointment && bookingId) {
+      fetchAppointmentById(bookingId);
+    }
+  }, [route.params]);
+
+  const fetchAppointmentById = async (bookingId: string) => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const response = await appointmentService.getBookingById(bookingId);
+      setAppointment(response.data || response);
+    } catch (error: any) {
+      console.error('Failed to fetch appointment:', error);
+      setLoadError('Failed to load appointment details');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleStartChat = () => {
+    if (!appointment) return;
     navigation.navigate('Chat', { appointment });
   };
 
@@ -74,6 +102,7 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
       showError('Error', 'Please enter notes for the appointment');
       return;
     }
+    if (!appointment) return;
 
     try {
       setIsSubmitting(true);
@@ -108,6 +137,7 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
   };
 
   const handleMarkNoShow = async () => {
+    if (!appointment) return;
     try {
       await appointmentService.markNoShow(appointment.bookingId);
       showSuccess('Success', 'Appointment marked as no show');
@@ -183,6 +213,38 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
         <View style={styles.placeholder} />
       </View>
 
+      {/* Loading State */}
+      {isLoading && (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={theme.colors.accent} />
+          <Text style={[styles.loadingText, { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.regular }]}>
+            Loading appointment details...
+          </Text>
+        </View>
+      )}
+
+      {/* Error State */}
+      {!isLoading && loadError && (
+        <View style={styles.centerContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={theme.colors.text.tertiary} />
+          <Text style={[styles.errorText, { color: theme.colors.text.secondary, fontFamily: theme.fontFamily.medium }]}>
+            {loadError}
+          </Text>
+          <Pressable
+            style={[styles.retryButton, { backgroundColor: theme.colors.accent }]}
+            onPress={() => {
+              const bookingId = route.params?.bookingId;
+              if (bookingId) fetchAppointmentById(bookingId);
+            }}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Content - only render when appointment is available */}
+      {!isLoading && !loadError && appointment && (
+      <>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -388,6 +450,8 @@ export function AppointmentDetailScreen({ navigation, route }: Props) {
           </KeyboardAvoidingView>
         </TouchableWithoutFeedback>
       </Modal>
+      </>
+      )}
     </SafeAreaView>
   );
 }
@@ -577,5 +641,31 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  loadingText: {
+    fontSize: 15,
+    marginTop: 16,
+  },
+  errorText: {
+    fontSize: 15,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

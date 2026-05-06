@@ -39,6 +39,15 @@ export const appointmentService = {
     //         throw error;
     //     }
     // },
+    getBookingById: async (bookingId: string) => {
+        try {
+            const response = await api.get<any>(`/booking/${bookingId}`);
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
+
     allAppointments: async () => {
         try {
             const response = await api.get<any>('/booking/consultant/all');

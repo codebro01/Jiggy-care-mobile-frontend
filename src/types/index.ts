@@ -122,9 +122,11 @@ export interface Prescription {
 export interface CreatePrescription {
     patientId: string;
     name: string;
+    notes: string;
     dosage: number;
     mg: number;
     frequency: string;
+    duration: number;
     startDate: string;
 }
 

@@ -108,6 +108,12 @@ export default function App() {
                 bookingId: data.bookingId,
               });
             }, 1000);
+          } else if (data?.category === 'FollowUp') {
+            setTimeout(() => {
+              navigationRef.current?.navigate('AppointmentDetail', {
+                bookingId: data.bookingId,
+              });
+            }, 1000);
           }
         });
 
