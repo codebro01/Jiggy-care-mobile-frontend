@@ -26,6 +26,7 @@ import { uploadService } from '@/services/upload.service';
 import { useAlert, Alert as AlertComponent } from '@/components/alert';
 import * as ImagePicker from 'expo-image-picker';
 import { specialityService } from '@/services/speciality.service';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 
 type EditProfileScreenNavigationProp = NativeStackNavigationProp<
@@ -48,6 +49,7 @@ export function EditProfileScreen({ navigation }: Props) {
   const [phone, setPhone] = useState(user?.phone || '');
   const [address, setAddress] = useState(user?.address || '');
   const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth || '');
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [gender, setGender] = useState(user?.gender || '');
 
   // Professional Information (Consultant)
@@ -61,6 +63,14 @@ export function EditProfileScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const { alert, showSuccess, showError, showWarning, hideAlert } = useAlert();
   const [specialities, setSpecialities] = useState([]);
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      const formattedDate = selectedDate.toISOString().split('T')[0];
+      setDateOfBirth(formattedDate);
+    }
+  };
 
 
 
@@ -280,13 +290,28 @@ export function EditProfileScreen({ navigation }: Props) {
               leftIcon="location-outline"
             />
 
-            <Input
-              label="Date of Birth"
-              placeholder="YYYY-MM-DD"
-              value={dateOfBirth}
-              onChangeText={setDateOfBirth}
-              leftIcon="calendar-outline"
-            />
+            <Pressable onPress={() => setShowDatePicker(true)}>
+              <View pointerEvents="none">
+                <Input
+                  label="Date of Birth"
+                  placeholder="YYYY-MM-DD"
+                  value={dateOfBirth}
+                  onChangeText={() => {}}
+                  leftIcon="calendar-outline"
+                  editable={false}
+                />
+              </View>
+            </Pressable>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={dateOfBirth ? new Date(dateOfBirth) : new Date()}
+                mode="date"
+                display="default"
+                onChange={onDateChange}
+                maximumDate={new Date()}
+              />
+            )}
 
             <Input
               label="Gender"
