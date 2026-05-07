@@ -20,6 +20,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert as RNAlert,
+  Image,
+  Linking,
+  ActivityIndicator,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { useAlert, Alert } from '@/components/alert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'; // ✅ Import useSafeAreaInsets
@@ -96,6 +101,11 @@ export function ChatScreen({ navigation, route }: Props) {
   const [inputText, setInputText] = useState('');
   const [isConnecting, setIsConnecting] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{
+    uri: string;
+    name: string;
+    mimeType: string;
+  } | null>(null);
   const sendButtonScale = useSharedValue(1);
 
   // Initialize conversation and WebSocket
@@ -313,6 +323,51 @@ export function ChatScreen({ navigation, route }: Props) {
     }, 100);
   };
 
+  // Helper to get a nice icon for a file type
+  const getFileIcon = (mimeType?: string): string => {
+    if (!mimeType) return 'document-outline';
+    if (mimeType.startsWith('image/')) return 'image-outline';
+    if (mimeType.startsWith('video/')) return 'videocam-outline';
+    if (mimeType.includes('pdf')) return 'document-text-outline';
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'document-text-outline';
+    return 'document-outline';
+  };
+
+  // Helper to get a friendly label
+  const getFileLabel = (mimeType?: string): string => {
+    if (!mimeType) return 'File';
+    if (mimeType.startsWith('image/')) return 'Image';
+    if (mimeType.startsWith('video/')) return 'Video';
+    if (mimeType.includes('pdf')) return 'PDF Document';
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'Word Document';
+    return 'File';
+  };
+
+  // Extract filename from URL
+  const getFileName = (url?: string): string => {
+    if (!url) return 'Unknown file';
+    try {
+      const parts = url.split('/');
+      const last = parts[parts.length - 1];
+      // Remove query params
+      return decodeURIComponent(last.split('?')[0]) || 'File';
+    } catch {
+      return 'File';
+    }
+  };
+
+  const isImageType = (mimeType?: string, type?: string): boolean => {
+    if (type === 'image') return true;
+    if (!mimeType) return false;
+    return mimeType.startsWith('image/');
+  };
+
+  const isVideoType = (mimeType?: string): boolean => {
+    if (!mimeType) return false;
+    return mimeType.startsWith('video/');
+  };
+
+  // Step 1: Pick file -> show preview
   const handleAttachFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -321,39 +376,65 @@ export function ChatScreen({ navigation, route }: Props) {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setIsUploading(true);
         const asset = result.assets[0];
-
-        const formData = new FormData();
-        const filename = asset.name || 'upload.file';
-        let mimeType = asset.mimeType || 'application/octet-stream';
-        
-        // Ensure proper mime type format for form data
-        formData.append('file', {
+        setPendingFile({
           uri: asset.uri,
-          name: filename,
-          type: mimeType,
-        } as any);
-
-        const uploadResponse = await uploadService.uploadChatFile(formData);
-        
-        const fileUrl = uploadResponse.data?.data?.fileUrl || uploadResponse.data?.fileUrl || uploadResponse.secure_url;
-        const fileType = uploadResponse.data?.data?.fileType || uploadResponse.data?.fileType || mimeType;
-
-        if (!fileUrl) {
-          throw new Error('Failed to get file URL from upload');
-        }
-
-        const msgType = fileType.startsWith('image/') || fileType.startsWith('video/') ? 'image' : 'file';
-
-        sendMessage('', msgType, fileUrl, fileType);
+          name: asset.name || 'upload.file',
+          mimeType: asset.mimeType || 'application/octet-stream',
+        });
       }
+    } catch (error: any) {
+      console.log('File pick error:', error);
+      showError(error.message || 'Failed to pick file', 'Error');
+    }
+  };
+
+  // Step 2: User confirms -> upload + send
+  const confirmSendFile = async () => {
+    if (!pendingFile) return;
+    if (!currentConversation) {
+      showError('Not connected to conversation', 'Error');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: pendingFile.uri,
+        name: pendingFile.name,
+        type: pendingFile.mimeType,
+      } as any);
+
+      const uploadResponse = await uploadService.uploadChatFile(formData);
+
+      const fileUrl = uploadResponse.data?.data?.fileUrl || uploadResponse.data?.fileUrl || uploadResponse.secure_url;
+      const fileType = uploadResponse.data?.data?.fileType || uploadResponse.data?.fileType || pendingFile.mimeType;
+
+      if (!fileUrl) {
+        throw new Error('Failed to get file URL from upload');
+      }
+
+      const msgType = (fileType.startsWith('image/') || fileType.startsWith('video/')) ? 'image' : 'file';
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      sendMessage('', msgType, fileUrl, fileType);
+      setPendingFile(null);
+
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     } catch (error: any) {
       console.log('File upload error:', error);
       showError(error.message || 'Failed to upload file', 'Error');
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const cancelFilePreview = () => {
+    setPendingFile(null);
   };
 
   const sendButtonAnimatedStyle = useAnimatedStyle(() => ({
@@ -435,26 +516,81 @@ export function ChatScreen({ navigation, route }: Props) {
             isOwn
               ? { backgroundColor: theme.colors.accent }
               : { backgroundColor: theme.colors.surface.secondary },
+            item.fileUrl && isImageType(item.fileType, item.type) ? styles.imageBubble : undefined,
           ]}
         >
           {item.fileUrl ? (
             <View>
-              {item.type === 'image' || (item.fileType && (item.fileType.startsWith('image/') || item.fileType.startsWith('video/'))) ? (
-                 <Text style={[
-                  styles.messageText,
-                  { color: isOwn ? '#FFFFFF' : theme.colors.text.primary, fontStyle: 'italic', marginBottom: 4 }
-                ]}>[Media Attachment]</Text>
+              {isImageType(item.fileType, item.type) ? (
+                <Pressable onPress={() => item.fileUrl && Linking.openURL(item.fileUrl)}>
+                  <Image
+                    source={{ uri: item.fileUrl }}
+                    style={styles.messageImage}
+                    resizeMode="cover"
+                  />
+                </Pressable>
+              ) : isVideoType(item.fileType) ? (
+                <Pressable
+                  onPress={() => item.fileUrl && Linking.openURL(item.fileUrl)}
+                  style={styles.videoPreview}
+                >
+                  <View style={styles.videoOverlay}>
+                    <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.9)" />
+                  </View>
+                  <Text style={[
+                    styles.messageText,
+                    { color: isOwn ? '#FFFFFF' : theme.colors.text.primary, marginTop: 8 }
+                  ]}>🎬 Video</Text>
+                </Pressable>
               ) : (
-                <Text style={[
-                  styles.messageText,
-                  { color: isOwn ? '#FFFFFF' : theme.colors.text.primary, textDecorationLine: 'underline', marginBottom: 4 }
-                ]}>📎 Document Attached</Text>
+                <Pressable
+                  onPress={() => item.fileUrl && Linking.openURL(item.fileUrl)}
+                  style={[
+                    styles.documentCard,
+                    { backgroundColor: isOwn ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)' },
+                  ]}
+                >
+                  <View style={[
+                    styles.documentIconContainer,
+                    { backgroundColor: isOwn ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.08)' },
+                  ]}>
+                    <Ionicons
+                      name={getFileIcon(item.fileType) as any}
+                      size={24}
+                      color={isOwn ? '#FFFFFF' : theme.colors.accent}
+                    />
+                  </View>
+                  <View style={styles.documentInfo}>
+                    <Text
+                      style={[
+                        styles.documentName,
+                        { color: isOwn ? '#FFFFFF' : theme.colors.text.primary },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {getFileName(item.fileUrl)}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.documentType,
+                        { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.colors.text.tertiary },
+                      ]}
+                    >
+                      {getFileLabel(item.fileType)}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="download-outline"
+                    size={18}
+                    color={isOwn ? 'rgba(255,255,255,0.7)' : theme.colors.text.tertiary}
+                  />
+                </Pressable>
               )}
               {item.content ? (
                 <Text
                   style={[
                     styles.messageText,
-                    { color: isOwn ? '#FFFFFF' : theme.colors.text.primary },
+                    { color: isOwn ? '#FFFFFF' : theme.colors.text.primary, marginTop: 6 },
                   ]}
                 >
                   {item.content}
@@ -487,7 +623,6 @@ export function ChatScreen({ navigation, route }: Props) {
                 color={item.isRead ? '#60A5FA' : 'rgba(255,255,255,0.7)'}
                 style={styles.readReceipt}
               />
-
             )}
           </View>
         </View>
@@ -631,11 +766,70 @@ export function ChatScreen({ navigation, route }: Props) {
           }}
         />
 
+        {/* File Preview Bar (before sending) */}
+        {pendingFile && (
+          <View style={[styles.filePreviewBar, { backgroundColor: theme.colors.surface.secondary, borderTopColor: theme.colors.border.primary }]}>
+            <View style={styles.filePreviewContent}>
+              {pendingFile.mimeType.startsWith('image/') ? (
+                <Image
+                  source={{ uri: pendingFile.uri }}
+                  style={styles.filePreviewImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.filePreviewIcon, { backgroundColor: theme.colors.accent + '20' }]}>
+                  <Ionicons
+                    name={getFileIcon(pendingFile.mimeType) as any}
+                    size={28}
+                    color={theme.colors.accent}
+                  />
+                </View>
+              )}
+              <View style={styles.filePreviewInfo}>
+                <Text
+                  style={[styles.filePreviewName, { color: theme.colors.text.primary, fontFamily: theme.fontFamily.semiBold }]}
+                  numberOfLines={1}
+                >
+                  {pendingFile.name}
+                </Text>
+                <Text style={[styles.filePreviewType, { color: theme.colors.text.tertiary }]}>
+                  {getFileLabel(pendingFile.mimeType)}
+                </Text>
+              </View>
+              <Pressable
+                onPress={cancelFilePreview}
+                style={[styles.filePreviewClose, { backgroundColor: theme.colors.surface.primary }]}
+              >
+                <Ionicons name="close" size={18} color={theme.colors.text.secondary} />
+              </Pressable>
+            </View>
+            <Pressable
+              onPress={confirmSendFile}
+              disabled={isUploading}
+              style={[
+                styles.filePreviewSend,
+                { backgroundColor: theme.colors.accent, opacity: isUploading ? 0.6 : 1 },
+              ]}
+            >
+              {isUploading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="send" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={{ color: '#FFFFFF', fontFamily: theme.fontFamily.semiBold, fontSize: 14 }}>
+                    Send File
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        )}
+
         {/* Input Bar */}
         <View style={[styles.inputBar, { backgroundColor: theme.colors.surface.primary, paddingBottom: Math.max(insets.bottom, 80) }]}>
           <Pressable style={styles.attachButton} onPress={handleAttachFile} disabled={isUploading}>
              {isUploading ? (
-               <Text style={{fontSize: 10, color: theme.colors.text.tertiary}}>...</Text>
+               <ActivityIndicator size="small" color={theme.colors.text.tertiary} />
              ) : (
                <Ionicons name="attach" size={24} color={theme.colors.text.tertiary} />
              )}
@@ -857,5 +1051,106 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Image in message bubble
+  imageBubble: {
+    paddingHorizontal: 4,
+    paddingTop: 4,
+    paddingBottom: 6,
+    overflow: 'hidden',
+  },
+  messageImage: {
+    width: Dimensions.get('window').width * 0.55,
+    height: 180,
+    borderRadius: 14,
+  },
+  // Video preview
+  videoPreview: {
+    width: Dimensions.get('window').width * 0.55,
+    height: 120,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoOverlay: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Document card in message
+  documentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 12,
+    minWidth: 200,
+  },
+  documentIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  documentInfo: {
+    flex: 1,
+    marginRight: 8,
+  },
+  documentName: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  documentType: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  // File preview bar (before sending)
+  filePreviewBar: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+  },
+  filePreviewContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  filePreviewImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+  },
+  filePreviewIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filePreviewInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  filePreviewName: {
+    fontSize: 14,
+  },
+  filePreviewType: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  filePreviewClose: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filePreviewSend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
   },
 });
