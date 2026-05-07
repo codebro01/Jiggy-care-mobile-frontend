@@ -26,7 +26,7 @@ interface ChatState {
     setTyping: (isTyping: boolean) => void;
     startTyping: () => void;
     stopTyping: () => void;
-    sendMessage: (content: string, type?: Message['type']) => Promise<void>;
+    sendMessage: (content: string, type?: Message['type'], fileUrl?: string, fileType?: string) => Promise<void>;
     loadConversations: () => Promise<void>;
     loadMessages: (conversationId: string) => Promise<void>;
     markAsRead: (conversationId: string, messageIds: string[]) => void;
@@ -190,7 +190,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         });
     },
 
-    sendMessage: async (content, type = 'text') => {
+    sendMessage: async (content, type = 'text', fileUrl?: string, fileType?: string) => {
         const { currentConversation, addMessage, updateMessageStatus } = get();
         const user = useAuthStore.getState().user;
 
@@ -206,9 +206,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
             senderId: user.id,
             content,
             type,
+            fileUrl,
+            fileType,
             isRead: false,
             createdAt: new Date().toISOString(),
-        };
+        } as Message;
 
         // Optimistically add message to UI
         addMessage(newMessage);
@@ -220,7 +222,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 consultantId: user.role === 'consultant' ? user.id : currentConversation.consultantId,
                 patientId: user.role === 'patient' ? user.id : currentConversation.patientId,
                 content,
-                senderType: 'consultant',
+                senderType: user.role || 'patient',
+                fileUrl,
+                fileType,
             });
 
             console.log('✅ Message sent successfully');

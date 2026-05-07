@@ -138,8 +138,10 @@ class SocketService {
         conversationId: string;
         consultantId?: string;
         patientId?: string;
-        content: string;
-        senderType: 'consultant';
+        content?: string;
+        senderType: string;
+        fileUrl?: string;
+        fileType?: string;
     }) {
         await this.ensureConnected();
 

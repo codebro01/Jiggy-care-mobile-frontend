@@ -45,6 +45,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { CallModal } from '@/components/CallModal';
 import { useCallStore } from '@/stores/callStore';
 import { useAppointmentsStore } from '@/stores/appointmentsStore';
+import * as DocumentPicker from 'expo-document-picker';
+import { uploadService } from '@/services/upload.service';
 
 type ChatScreenNavigationProp =
   | NativeStackNavigationProp<AppointmentsStackParamList, 'Chat'>
@@ -93,6 +95,7 @@ export function ChatScreen({ navigation, route }: Props) {
 
   const [inputText, setInputText] = useState('');
   const [isConnecting, setIsConnecting] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
   const sendButtonScale = useSharedValue(1);
 
   // Initialize conversation and WebSocket
@@ -310,6 +313,49 @@ export function ChatScreen({ navigation, route }: Props) {
     }, 100);
   };
 
+  const handleAttachFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setIsUploading(true);
+        const asset = result.assets[0];
+
+        const formData = new FormData();
+        const filename = asset.name || 'upload.file';
+        let mimeType = asset.mimeType || 'application/octet-stream';
+        
+        // Ensure proper mime type format for form data
+        formData.append('file', {
+          uri: asset.uri,
+          name: filename,
+          type: mimeType,
+        } as any);
+
+        const uploadResponse = await uploadService.uploadChatFile(formData);
+        
+        const fileUrl = uploadResponse.data?.data?.fileUrl || uploadResponse.data?.fileUrl || uploadResponse.secure_url;
+        const fileType = uploadResponse.data?.data?.fileType || uploadResponse.data?.fileType || mimeType;
+
+        if (!fileUrl) {
+          throw new Error('Failed to get file URL from upload');
+        }
+
+        const msgType = fileType.startsWith('image/') || fileType.startsWith('video/') ? 'image' : 'file';
+
+        sendMessage('', msgType, fileUrl, fileType);
+      }
+    } catch (error: any) {
+      console.log('File upload error:', error);
+      showError(error.message || 'Failed to upload file', 'Error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const sendButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: sendButtonScale.value }],
   }));
@@ -391,14 +437,40 @@ export function ChatScreen({ navigation, route }: Props) {
               : { backgroundColor: theme.colors.surface.secondary },
           ]}
         >
-          <Text
-            style={[
-              styles.messageText,
-              { color: isOwn ? '#FFFFFF' : theme.colors.text.primary },
-            ]}
-          >
-            {item.content}
-          </Text>
+          {item.fileUrl ? (
+            <View>
+              {item.type === 'image' || (item.fileType && (item.fileType.startsWith('image/') || item.fileType.startsWith('video/'))) ? (
+                 <Text style={[
+                  styles.messageText,
+                  { color: isOwn ? '#FFFFFF' : theme.colors.text.primary, fontStyle: 'italic', marginBottom: 4 }
+                ]}>[Media Attachment]</Text>
+              ) : (
+                <Text style={[
+                  styles.messageText,
+                  { color: isOwn ? '#FFFFFF' : theme.colors.text.primary, textDecorationLine: 'underline', marginBottom: 4 }
+                ]}>📎 Document Attached</Text>
+              )}
+              {item.content ? (
+                <Text
+                  style={[
+                    styles.messageText,
+                    { color: isOwn ? '#FFFFFF' : theme.colors.text.primary },
+                  ]}
+                >
+                  {item.content}
+                </Text>
+              ) : null}
+            </View>
+          ) : (
+            <Text
+              style={[
+                styles.messageText,
+                { color: isOwn ? '#FFFFFF' : theme.colors.text.primary },
+              ]}
+            >
+              {item.content}
+            </Text>
+          )}
           <View style={styles.messageFooter}>
             <Text
               style={[
@@ -561,9 +633,13 @@ export function ChatScreen({ navigation, route }: Props) {
 
         {/* Input Bar */}
         <View style={[styles.inputBar, { backgroundColor: theme.colors.surface.primary, paddingBottom: Math.max(insets.bottom, 80) }]}>
-          {/* <Pressable style={styles.attachButton}>
-            <Ionicons name="attach" size={24} color={theme.colors.text.tertiary} />
-          </Pressable> */}
+          <Pressable style={styles.attachButton} onPress={handleAttachFile} disabled={isUploading}>
+             {isUploading ? (
+               <Text style={{fontSize: 10, color: theme.colors.text.tertiary}}>...</Text>
+             ) : (
+               <Ionicons name="attach" size={24} color={theme.colors.text.tertiary} />
+             )}
+          </Pressable>
 
           <View
             style={[

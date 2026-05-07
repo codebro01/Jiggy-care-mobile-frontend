@@ -72,6 +72,7 @@ export interface Message {
     type: 'text' | 'image' | 'file';
     fileUrl?: string;
     fileName?: string;
+    fileType?: string;
     isRead: boolean;
     createdAt: string;
 }

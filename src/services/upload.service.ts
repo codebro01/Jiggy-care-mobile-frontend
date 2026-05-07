@@ -17,4 +17,20 @@ export const uploadService = {
             throw error;
         }
     },
+
+    uploadChatFile: async (
+        file: FormData
+    ) => {
+        try {
+            const response = await api.post<any>('/upload/file', file, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                }
+            });
+
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    },
 }
