@@ -486,12 +486,44 @@ export function ChatScreen({ navigation, route }: Props) {
     initiateCall(peerId, currentConversation.id, 'audio', appointment.patientName);
   };
 
+  // Detect if a content string is actually a file URL
+  const contentIsFileUrl = (content?: string): boolean => {
+    if (!content) return false;
+    const trimmed = content.trim();
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) return false;
+    // Check for common file extensions or cloudinary patterns
+    const filePatterns = /\.(jpg|jpeg|png|gif|webp|mp4|mov|pdf|doc|docx)(\?.*)?$/i;
+    const cloudinaryPattern = /res\.cloudinary\.com/i;
+    return filePatterns.test(trimmed) || cloudinaryPattern.test(trimmed);
+  };
+
+  // Guess mime type from URL extension
+  const guessMimeFromUrl = (url: string): string => {
+    const lower = url.toLowerCase();
+    if (lower.includes('.jpg') || lower.includes('.jpeg')) return 'image/jpeg';
+    if (lower.includes('.png')) return 'image/png';
+    if (lower.includes('.gif')) return 'image/gif';
+    if (lower.includes('.webp')) return 'image/webp';
+    if (lower.includes('.mp4')) return 'video/mp4';
+    if (lower.includes('.mov')) return 'video/quicktime';
+    if (lower.includes('.pdf')) return 'application/pdf';
+    if (lower.includes('.doc')) return 'application/msword';
+    // Cloudinary image/upload path is usually an image
+    if (/cloudinary\.com.*\/image\/upload/i.test(url)) return 'image/jpeg';
+    return 'application/octet-stream';
+  };
+
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isOwn = item.senderId === user?.id;
     const showAvatar =
       !isOwn &&
       (index === messages.length - 1 ||
         messages[index + 1]?.senderId !== item.senderId);
+
+    // Resolve the actual file URL and type — handle both fileUrl field and URL-in-content
+    const resolvedFileUrl = item.fileUrl || (contentIsFileUrl(item.content) ? item.content.trim() : undefined);
+    const resolvedFileType = item.fileType || (resolvedFileUrl && !item.fileUrl ? guessMimeFromUrl(resolvedFileUrl) : undefined);
+    const hasFile = !!resolvedFileUrl;
 
     return (
       <Animated.View
@@ -516,22 +548,22 @@ export function ChatScreen({ navigation, route }: Props) {
             isOwn
               ? { backgroundColor: theme.colors.accent }
               : { backgroundColor: theme.colors.surface.secondary },
-            item.fileUrl && isImageType(item.fileType, item.type) ? styles.imageBubble : undefined,
+            hasFile && isImageType(resolvedFileType, item.type) ? styles.imageBubble : undefined,
           ]}
         >
-          {item.fileUrl ? (
+          {hasFile ? (
             <View>
-              {isImageType(item.fileType, item.type) ? (
-                <Pressable onPress={() => item.fileUrl && Linking.openURL(item.fileUrl)}>
+              {isImageType(resolvedFileType, item.type) ? (
+                <Pressable onPress={() => resolvedFileUrl && Linking.openURL(resolvedFileUrl)}>
                   <Image
-                    source={{ uri: item.fileUrl }}
+                    source={{ uri: resolvedFileUrl }}
                     style={styles.messageImage}
                     resizeMode="cover"
                   />
                 </Pressable>
-              ) : isVideoType(item.fileType) ? (
+              ) : isVideoType(resolvedFileType) ? (
                 <Pressable
-                  onPress={() => item.fileUrl && Linking.openURL(item.fileUrl)}
+                  onPress={() => resolvedFileUrl && Linking.openURL(resolvedFileUrl)}
                   style={styles.videoPreview}
                 >
                   <View style={styles.videoOverlay}>
@@ -544,7 +576,7 @@ export function ChatScreen({ navigation, route }: Props) {
                 </Pressable>
               ) : (
                 <Pressable
-                  onPress={() => item.fileUrl && Linking.openURL(item.fileUrl)}
+                  onPress={() => resolvedFileUrl && Linking.openURL(resolvedFileUrl)}
                   style={[
                     styles.documentCard,
                     { backgroundColor: isOwn ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)' },
@@ -555,7 +587,7 @@ export function ChatScreen({ navigation, route }: Props) {
                     { backgroundColor: isOwn ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.08)' },
                   ]}>
                     <Ionicons
-                      name={getFileIcon(item.fileType) as any}
+                      name={getFileIcon(resolvedFileType) as any}
                       size={24}
                       color={isOwn ? '#FFFFFF' : theme.colors.accent}
                     />
@@ -568,7 +600,7 @@ export function ChatScreen({ navigation, route }: Props) {
                       ]}
                       numberOfLines={1}
                     >
-                      {getFileName(item.fileUrl)}
+                      {getFileName(resolvedFileUrl)}
                     </Text>
                     <Text
                       style={[
@@ -576,7 +608,7 @@ export function ChatScreen({ navigation, route }: Props) {
                         { color: isOwn ? 'rgba(255,255,255,0.7)' : theme.colors.text.tertiary },
                       ]}
                     >
-                      {getFileLabel(item.fileType)}
+                      {getFileLabel(resolvedFileType)}
                     </Text>
                   </View>
                   <Ionicons
@@ -586,7 +618,8 @@ export function ChatScreen({ navigation, route }: Props) {
                   />
                 </Pressable>
               )}
-              {item.content ? (
+              {/* Only show content text if it's NOT the file URL itself */}
+              {item.content && item.content.trim() !== resolvedFileUrl ? (
                 <Text
                   style={[
                     styles.messageText,

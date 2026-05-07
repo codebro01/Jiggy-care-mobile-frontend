@@ -138,11 +138,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         // Check for optimistic message duplicates (temp IDs)
         // If we have a temp message with same content sent within 5 seconds, replace it
+        // For file messages (empty content), also match on fileUrl
         const tempMessage = state.messages.find(msg =>
             msg.id.startsWith('temp-') &&
-            msg.content === message.content &&
             msg.senderId === message.senderId &&
-            Math.abs(new Date(msg.createdAt).getTime() - new Date(message.createdAt).getTime()) < 5000
+            Math.abs(new Date(msg.createdAt).getTime() - new Date(message.createdAt).getTime()) < 5000 &&
+            (
+                // Text messages: match by content
+                (msg.content && msg.content === message.content) ||
+                // File messages: match by fileUrl
+                (!msg.content && msg.fileUrl && msg.fileUrl === message.fileUrl)
+            )
         );
 
         if (tempMessage) {
