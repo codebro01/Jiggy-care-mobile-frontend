@@ -10,7 +10,7 @@ import {appointmentService} from '../services/appointment.service';
 interface AppointmentsState {
     appointments: Appointment[];
     selectedAppointment: Appointment | null;
-    filter: 'upcoming' | 'completed' | 'cancelled' | 'in_progress' | 'pending_confirmation'  | 'no_show';
+    filter: 'upcoming' | 'completed' | 'cancelled' | 'in_progress' | 'pending_confirmation' | 'no_show' | 'stale';
     isLoading: boolean;
     error: string | null;
 

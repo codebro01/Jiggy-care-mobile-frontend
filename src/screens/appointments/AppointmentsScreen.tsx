@@ -36,7 +36,7 @@ interface Props {
   navigation: AppointmentsScreenNavigationProp;
 }
 
-type FilterType = 'upcoming' | 'completed' | 'cancelled' | 'in_progress' | 'pending_confirmation' | 'no_show';
+type FilterType = 'upcoming' | 'completed' | 'cancelled' | 'in_progress' | 'pending_confirmation' | 'no_show' | 'stale';
 
 const filters: { key: FilterType; label: string }[] = [
   { key: 'upcoming', label: 'Upcoming' },
@@ -45,6 +45,7 @@ const filters: { key: FilterType; label: string }[] = [
   { key: 'no_show', label: 'no_show' },
   { key: 'pending_confirmation', label: 'pending_confirmation' },
   { key: 'completed', label: 'Completed' },
+  { key: 'stale', label: 'stale' },
 ];
 
 export function AppointmentsScreen({ navigation }: Props) {
