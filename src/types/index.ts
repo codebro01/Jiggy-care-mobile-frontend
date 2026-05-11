@@ -50,7 +50,7 @@ export interface Patient {
 }
 
 // Appointment Types
-export type AppointmentStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'in_progress' | 'no_show' | 'pending_confirmation' | 'upcoming';
+export type AppointmentStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'in_progress' | 'no_show' | 'pending_confirmation' | 'upcoming' | 'stale';
 
 export interface Appointment {
     bookingId: string;

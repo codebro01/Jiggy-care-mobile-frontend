@@ -22,6 +22,7 @@ interface AppointmentsState {
     getFilteredAppointments: () => Appointment[];
     getUpcomingCount: () => number;
     getCompletedCount: () => number;
+    getStaleCount: () => number;
     clearError: () => void;
 }
 
@@ -76,7 +77,12 @@ export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
 
         if (filter === 'upcoming') {
             return appointments.filter(apt =>
-                apt.status !== 'completed' && apt.status !== 'cancelled' && apt.status !== 'in_progress' && apt.status !== 'no_show' && apt.status !== 'pending_confirmation'
+                apt.status !== 'completed' && 
+                apt.status !== 'cancelled' && 
+                apt.status !== 'in_progress' && 
+                apt.status !== 'no_show' && 
+                apt.status !== 'pending_confirmation' &&
+                apt.status !== 'stale'
             );
         }
     
@@ -92,22 +98,33 @@ export const useAppointmentsStore = create<AppointmentsState>((set, get) => ({
             return appointments.filter(apt => apt.status === 'pending_confirmation');
         }
 
+        if (filter === 'stale') {
+            return appointments.filter(apt => apt.status === 'stale');
+        }
+
         return appointments;
     },
 
     getUpcomingCount: () => {
         const { appointments } = get();
-        const now = new Date();
         return appointments.filter(apt =>
-            apt.status !== 'completed' &&
-            apt.status !== 'cancelled' &&
-            new Date(apt.date) >= now
+            apt.status !== 'completed' && 
+            apt.status !== 'cancelled' && 
+            apt.status !== 'in_progress' && 
+            apt.status !== 'no_show' && 
+            apt.status !== 'pending_confirmation' &&
+            apt.status !== 'stale'
         ).length;
     },
 
     getCompletedCount: () => {
         const { appointments } = get();
         return appointments.filter(apt => apt.status === 'completed').length;
+    },
+
+    getStaleCount: () => {
+        const { appointments } = get();
+        return appointments.filter(apt => apt.status === 'stale').length;
     },
 
     clearError: () => set({ error: null }),
