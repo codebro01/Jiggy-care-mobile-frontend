@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -16,9 +16,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "consultant.jigicare.app",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "remote-notification"
-        ]
+        "UIBackgroundModes": ["remote-notification"]
       },
       "entitlements": {
         "aps-environment": "development",
@@ -34,30 +32,44 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "consultant.jigicare.app"
+      "package": "consultant.jigicare.app",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "FOREGROUND_SERVICE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      [
-        "onesignal-expo-plugin",
-        {
-          "mode": "development"
-        }
-      ],
-      "expo-font",
-      "expo-web-browser",
-      "@react-native-google-signin/google-signin",
-      [
-        "@config-plugins/react-native-webrtc",
-        {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
-        }
-      ],
-      "@react-native-community/datetimepicker"
-    ],
+  "plugins": [
+  [
+    "onesignal-expo-plugin",
+    {
+      "mode": "development"
+    }
+  ],
+  "@react-native-firebase/app",
+  "@react-native-firebase/messaging",
+  "expo-font",
+  "expo-web-browser",
+  "@react-native-google-signin/google-signin",
+  [
+    "@config-plugins/react-native-webrtc",
+    {
+      "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+      "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
+    }
+  ],
+  "@react-native-community/datetimepicker",
+  "@config-plugins/react-native-callkeep"
+],
     "extra": {
       "eas": {
         "projectId": "0ab53446-482b-47c3-b4b3-e132fb1419fb"

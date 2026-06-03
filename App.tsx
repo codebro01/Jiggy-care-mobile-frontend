@@ -25,6 +25,8 @@ import { RootStackParamList } from './src/navigation';
 import { AppNavigator } from './src/navigation';
 import { OneSignal } from 'react-native-onesignal';
 import { useAuthStore } from './src/stores/authStore';
+import { callKeepService } from '@/services/callkeep.service';
+import { useCallStore } from '@/stores/callStore';
 
 // Prevent splash screen from auto-hiding
 
@@ -80,6 +82,29 @@ export default function App() {
       try {
         console.log('1. Starting prepare...');
 
+        await callKeepService.setup();
+
+        callKeepService.registerListeners({
+          onAnswerCall: (uuid) => {
+            const callData = callKeepService.getPendingCallData();
+            if (callData && callData.uuid === uuid) {
+              // Clear pending data once navigated
+              callKeepService.clearPendingCallData();
+              navigationRef.current?.navigate('ChatScreen', {
+                conversationId: callData.conversationId,
+                callType: callData.callType,
+                bookingId: callData.bookingId,
+                fromUserId: callData.fromUserId,
+                isIncoming: true,
+              });
+            }
+          },
+          onEndCall: (uuid) => {
+            useCallStore.getState().rejectCall();
+            callKeepService.clearPendingCallData();
+          },
+        });
+
         initializeOneSignal();
         console.log('2. OneSignal done...');
 
@@ -89,18 +114,11 @@ export default function App() {
 
           if (data?.category === 'Call') {
             // ✅ no event.preventDefault() here — that's only for foregroundWillDisplay
-            if (activeCallRef.current !== data.conversationId) {
-              activeCallRef.current = data.conversationId;
-              setTimeout(() => {
-                navigationRef.current?.navigate('ChatScreen', {
-                  conversationId: data.conversationId,
-                  callType: data.callType,
-                  bookingId: data.bookingId,
-                  fromUserId: data.fromUserId,
-                  isIncoming: true,
-                });
-              }, 1000);
-            }
+            callKeepService.displayIncomingCall(
+              data.callerName || 'Incoming Call',
+              data.callType || 'video',
+              { conversationId: data.conversationId, bookingId: data.bookingId, fromUserId: data.fromUserId }
+            );
           } else if (data?.category === 'Message') {
             setTimeout(() => {
               navigationRef.current?.navigate('ChatScreen', {
@@ -124,17 +142,11 @@ export default function App() {
           if (data?.category === 'Call') {
             event.preventDefault(); // suppress OS banner
 
-            // ✅ Only navigate once per unique call
-            if (activeCallRef.current !== data.conversationId) {
-              activeCallRef.current = data.conversationId;
-              navigationRef.current?.navigate('ChatScreen', {
-                conversationId: data.conversationId,
-                callType: data.callType,
-                bookingId: data.bookingId,     // ✅ was missing
-                fromUserId: data.fromUserId,   // ✅ was missing
-                isIncoming: true,
-              });
-            }
+            callKeepService.displayIncomingCall(
+              data.callerName || 'Incoming Call',
+              data.callType || 'video',
+              { conversationId: data.conversationId, bookingId: data.bookingId, fromUserId: data.fromUserId }
+            );
           } else {
             event.notification.display();
           }

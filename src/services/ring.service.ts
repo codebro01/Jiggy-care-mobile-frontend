@@ -163,6 +163,12 @@ class RingService {
         this.isStartingRingtone = true;
 
         try {
+            // Native call screen handles ringtone on Android
+            if (Platform.OS === 'android') {
+                console.log('📱 Skipping custom ringtone — native call UI handles it');
+                return;
+            }
+
             await this.stopRingtone();
 
             if (!this.ringtoneBase64) this.init();

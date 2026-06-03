@@ -3,6 +3,7 @@ import { MediaStream } from 'react-native-webrtc';
 import { socketService } from '@/services/socket.service';
 import { webRTCService } from '@/services/webrtc.service';
 import { ringService } from '@/services/ring.service';
+import { callKeepService } from '@/services/callkeep.service';
 import { CallIncomingPayload, CallType } from '@/types';
 import InCallManager from 'react-native-incall-manager';
 import { useAppointmentsStore } from './appointmentsStore';
@@ -181,6 +182,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
         try {
             console.log('📞 Accepting call from:', otherUserId);
             ringService.stopRingtone();
+            callKeepService.reportConnectedCall();
             InCallManager.start({ media: callType === 'video' ? 'video' : 'audio' });
             set({ status: 'connected', error: null });
 
@@ -238,6 +240,13 @@ export const useCallStore = create<CallState>()((set, get) => ({
         );
 
         const name = appointment ? appointment.patientName : 'Unknown';
+
+        // Show native call screen
+        callKeepService.displayIncomingCall(
+            name,
+            payload.callType,
+            { conversationId: payload.conversationId, fromUserId: payload.fromUserId }
+        );
 
         set({
             status: 'incoming',
@@ -500,6 +509,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
 
     reset: () => {
         console.log('🔄 Resetting call state');
+        callKeepService.reportEndCall();
         InCallManager.stopRingback();
         InCallManager.stopRingtone();
         ringService.cleanup();
