@@ -6,6 +6,8 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, AuthTokens, UserSignupData } from '../types';
+import { registerFcmToken } from '../services/fcm.service'
+
 
 interface AuthState {
     userSignupData?: UserSignupData | null;
@@ -82,6 +84,8 @@ export const useAuthStore = create<AuthState>()(
                         isAuthenticated: true,
                         isLoading: false
                     });
+
+                     await registerFcmToken()
                 } catch (error) {
                     set({
                         error: error instanceof Error ? error.message : 'Login failed',
@@ -137,6 +141,8 @@ export const useAuthStore = create<AuthState>()(
                     });
                     throw error;
                 }
+
+                await registerFcmToken()
             },
 
             logout: () => {

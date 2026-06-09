@@ -9,12 +9,12 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@config-plugins/react-native-callkeep": "^12.0.0",
     "@config-plugins/react-native-webrtc": "^13.0.0",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/manrope": "^0.4.2",
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",
+    "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "8.4.4",
     "@react-native-firebase/app": "^24.0.0",
@@ -44,7 +44,6 @@
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-agora": "^4.5.4",
-    "react-native-callkeep": "^4.3.16",
     "react-native-gesture-handler": "^2.30.0",
     "react-native-incall-manager": "^4.2.1",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",

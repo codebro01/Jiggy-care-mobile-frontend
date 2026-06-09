@@ -27,6 +27,7 @@ import { Button, Input } from '../../components';
 import { authService } from '../../services/auth.service';
 import { useGoogleAuth } from './UseGoogleAuth';
 import { loginOneSignalUser } from '@/services/oneSignal.service';
+import { registerFcmToken } from '@/services/fcm.service';
 
 
 
@@ -116,6 +117,8 @@ const { signIn } = useGoogleAuth();
       });
 
       loginOneSignalUser(response.data.id)
+
+      await registerFcmToken()
       
     } catch (error: any) {
       showError(`Error: ${error.message || error}`, 'Error')

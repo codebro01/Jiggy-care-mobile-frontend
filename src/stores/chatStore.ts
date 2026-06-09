@@ -141,7 +141,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         // For file messages (empty content), also match on fileUrl
         const tempMessage = state.messages.find(msg =>
             msg.id.startsWith('temp-') &&
-            msg.senderId === message.senderId &&
+            (msg.senderId === message.senderId || msg.senderType === message.senderType) &&
             Math.abs(new Date(msg.createdAt).getTime() - new Date(message.createdAt).getTime()) < 5000 &&
             (
                 // Text messages: match by content
@@ -210,6 +210,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             id: tempId,
             conversationId: currentConversation.id,
             senderId: user.id,
+            senderType: user.role,
             content,
             type,
             fileUrl,

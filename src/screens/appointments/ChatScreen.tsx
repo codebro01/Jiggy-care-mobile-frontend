@@ -514,7 +514,7 @@ export function ChatScreen({ navigation, route }: Props) {
   };
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    const isOwn = item.senderId === user?.id;
+    const isOwn = item.senderId === user?.id || item.senderType === user?.role;
     const showAvatar =
       !isOwn &&
       (index === messages.length - 1 ||

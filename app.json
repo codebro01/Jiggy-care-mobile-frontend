@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -48,7 +48,7 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-  "plugins": [
+"plugins": [
   [
     "onesignal-expo-plugin",
     {
@@ -67,8 +67,7 @@
       "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
     }
   ],
-  "@react-native-community/datetimepicker",
-  "@config-plugins/react-native-callkeep"
+  "@react-native-community/datetimepicker"
 ],
     "extra": {
       "eas": {

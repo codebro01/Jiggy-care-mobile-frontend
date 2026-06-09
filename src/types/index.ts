@@ -68,6 +68,7 @@ export interface Message {
     id: string;
     conversationId: string;
     senderId: string;
+    senderType?: string;
     content: string;
     type: 'text' | 'image' | 'file';
     fileUrl?: string;
