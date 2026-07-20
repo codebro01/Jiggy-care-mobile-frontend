@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Modal, View, Text, StyleSheet, Pressable, SafeAreaView, Platform } from 'react-native';
-import { RTCView } from 'react-native-webrtc';
+import { RtcSurfaceView } from 'react-native-agora';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallStore } from '@/stores/callStore';
 import { useAppTheme } from '@/theme';
@@ -11,8 +11,7 @@ export const CallModal = () => {
     const {
         status,
         callType,
-        localStream,
-        remoteStream,
+        remoteUid,
         isMuted,
         isVideoEnabled,
         isSpeakerOn,
@@ -40,26 +39,23 @@ export const CallModal = () => {
             transparent={false}
             onRequestClose={() => {
                 // Prevent closing by back button if calling
-                // minimal handling: could minimize or prompt
             }}
         >
             <View style={[styles.container, { backgroundColor: theme.colors.background.primary }]}>
                 {/* Remote Stream (connected video call) */}
-                {isConnected && remoteStream && callType === 'video' ? (
-                    <RTCView
-                        streamURL={remoteStream.toURL()}
+                {isConnected && remoteUid && callType === 'video' ? (
+                    <RtcSurfaceView
+                        canvas={{ uid: remoteUid }}
                         style={styles.remoteVideo}
-                        objectFit="cover"
-                        mirror={false}
+                        zOrderMediaOverlay={false}
                     />
-                ) : (status === 'calling' || status === 'ringing') && localStream && callType === 'video' ? (
+                ) : (status === 'calling' || status === 'ringing') && callType === 'video' ? (
                     /* Show local camera as full-screen preview while calling/ringing */
                     <View style={styles.callingVideoContainer}>
-                        <RTCView
-                            streamURL={localStream.toURL()}
+                        <RtcSurfaceView
+                            canvas={{ uid: 0 }}
                             style={styles.remoteVideo}
-                            objectFit="cover"
-                            mirror={true}
+                            zOrderMediaOverlay={false}
                         />
                         <View style={styles.callingOverlay}>
                             <Avatar name={displayName} size="xl" />
@@ -89,14 +85,12 @@ export const CallModal = () => {
                 )}
 
                 {/* Local Stream (PIP) - show when connected */}
-                {isConnected && localStream && callType === 'video' && isVideoEnabled && (
+                {isConnected && callType === 'video' && isVideoEnabled && (
                     <View style={styles.localVideoContainer}>
-                        <RTCView
-                            streamURL={localStream.toURL()}
+                        <RtcSurfaceView
+                            canvas={{ uid: 0 }}
                             style={styles.localVideo}
-                            objectFit="cover"
-                            mirror={true}
-                            zOrder={1}
+                            zOrderMediaOverlay={true}
                         />
                     </View>
                 )}

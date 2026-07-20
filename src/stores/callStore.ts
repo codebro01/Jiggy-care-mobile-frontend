@@ -1,7 +1,6 @@
 import { create } from 'zustand'
-import { MediaStream } from 'react-native-webrtc'
 import { socketService } from '@/services/socket.service'
-import { webRTCService } from '@/services/webrtc.service'
+import { agoraService } from '@/services/agora.service'
 import { ringService } from '@/services/ring.service'
 import { callNotificationService } from '@/services/call-notification.service'
 import { CallIncomingPayload, CallType } from '@/types'
@@ -22,13 +21,11 @@ interface CallState {
   conversationId: string | null
   otherUserId: string | null
   otherUserName: string | null
-  localStream: MediaStream | null
-  remoteStream: MediaStream | null
+  remoteUid: number | null
   isMuted: boolean
   isVideoEnabled: boolean
   isSpeakerOn: boolean
   isFrontCamera: boolean
-  pendingOffer: { fromUserId: string; offer: RTCSessionDescriptionInit } | null
   error: string | null
 
   // Actions
@@ -59,65 +56,6 @@ interface CallState {
   }) => void
 }
 
-export const processOffer = async (
-  payload: { fromUserId: string; offer: RTCSessionDescriptionInit },
-  get: () => CallState,
-  set: (partial: Partial<CallState>) => void,
-) => {
-  const state = get() as any
-  state.isProcessingOffer = true
-  console.log('🔒 Locked offer processing')
-
-  try {
-    const { callType } = get()
-
-    if (!webRTCService.localStream) {
-      console.log('🎥 Starting local stream for answer...')
-      const stream = await webRTCService.startLocalStream(
-        callType === 'video',
-        true,
-      )
-      set({ localStream: stream })
-    }
-
-    if (!webRTCService.peerConnection) {
-      console.log('🛠 Creating PeerConnection for answer...')
-      webRTCService.createPeerConnection(
-        (candidate) => {
-          console.log('🧊 ICE Candidate generated (answerer)')
-          socketService.sendWebRTCIceCandidate({
-            toUserId: payload.fromUserId,
-            candidate: candidate.toJSON(),
-          })
-        },
-        (stream) => {
-          console.log('📺 Remote stream received (answerer)')
-          set({ remoteStream: stream })
-        },
-      )
-    }
-
-    console.log('🔍 Setting remote description...')
-    await webRTCService.setRemoteDescription(payload.offer)
-
-    console.log('📜 Creating Answer...')
-    const answer = await webRTCService.createAnswer()
-
-    console.log('📤 Sending Answer to:', payload.fromUserId)
-    socketService.sendWebRTCAnswer({ toUserId: payload.fromUserId, answer })
-
-    console.log('✅ Answer sent successfully')
-  } catch (error: any) {
-    console.error('❌ Failed to process offer:', error)
-    set({ error: error.message || 'Failed to process call' })
-  } finally {
-    setTimeout(() => {
-      ;(get() as any).isProcessingOffer = false
-      console.log('🔓 Unlocked offer processing')
-    }, 1000)
-  }
-}
-
 let isInitialized = false
 
 export const useCallStore = create<CallState>()((set, get) => ({
@@ -126,17 +64,14 @@ export const useCallStore = create<CallState>()((set, get) => ({
   conversationId: null,
   otherUserId: null,
   otherUserName: null,
-  localStream: null,
-  remoteStream: null,
+  remoteUid: null,
   isMuted: false,
   isVideoEnabled: true,
   isSpeakerOn: false,
   isFrontCamera: true,
   error: null,
-  pendingOffer: null,
+  
   initiateCall: async (toUserId, conversationId, type, otherUserName) => {
-    // Reset processing flag when initiating new call
-    ;(useCallStore.getState() as any).isProcessingOffer = false
     try {
       console.log('🚀 Initiating call:', { toUserId, conversationId, type })
       set({
@@ -148,88 +83,43 @@ export const useCallStore = create<CallState>()((set, get) => ({
         error: null,
       })
 
-      // Start InCallManager audio session
-      InCallManager.start({ media: type === 'video' ? 'video' : 'audio' })
-
-      // Start local stream
-      console.log('🎥 Starting local stream...')
-      const stream = await webRTCService.startLocalStream(
-        type === 'video',
-        true,
-      )
-      console.log('✅ Local stream started:', stream.id)
-      set({ localStream: stream })
-
-      // Initialize PeerConnection
-      console.log('🛠 Creating PeerConnection...')
-      webRTCService.createPeerConnection(
-        (candidate) => {
-          console.log('🧊 ICE Candidate generated')
-          socketService.sendWebRTCIceCandidate({
-            toUserId,
-            candidate: candidate.toJSON(),
-          })
-        },
-        (stream) => {
-          console.log('📺 Remote stream received:', stream.id)
-          set({ remoteStream: stream })
-        },
-      )
-
-      // Create Offer
-      console.log('📜 Creating Offer...')
-      const offer = await webRTCService.createOffer()
-      console.log('📤 Sending Offer...')
-      socketService.sendWebRTCOffer({ toUserId, offer })
-
-      // Notify backend
+      // Notify backend to ring the other user
       console.log('📞 Notifying backend of call initiation...')
       socketService.initiateCall({
         toUserId,
         conversationId,
         callType: type,
       })
+
+      // We don't join Agora channel until the other person accepts, 
+      // or we can join now. Usually caller joins now and waits.
+      console.log('📡 Joining Agora channel...', conversationId)
+      await agoraService.joinChannel(conversationId, type === 'video')
+
     } catch (error: any) {
       console.error('❌ Failed to initiate call:', error)
       set({ error: error.message || 'Failed to initiate call' })
-      // Don't reset immediately so user can see error
-      // get().reset();
       setTimeout(() => get().reset(), 3000)
     }
   },
 
   acceptCall: async () => {
-    const { otherUserId, callType, pendingOffer } = get()
-    if (!otherUserId) return
+    const { otherUserId, callType, conversationId } = get()
+    if (!otherUserId || !conversationId) return
 
     try {
       console.log('📞 Accepting call from:', otherUserId)
       ringService.stopRingtone()
-callNotificationService.reportConnectedCall()
-      InCallManager.start({ media: callType === 'video' ? 'video' : 'audio' })
+      callNotificationService.reportConnectedCall()
+      
       set({ status: 'connected', error: null })
 
-      // Start local stream
-      console.log('🎥 Starting local stream...')
-      const stream = await webRTCService.startLocalStream(
-        callType === 'video',
-        true,
-      )
-      set({ localStream: stream })
-
-      // Don't create peer connection here - handleWebRTCOffer will do it
-      // when the offer arrives, to avoid duplicate peer connections
+      console.log('📡 Joining Agora channel...', conversationId)
+      await agoraService.joinChannel(conversationId, callType === 'video')
 
       // Notify the other peer that we accepted
       socketService.acceptCall({ toUserId: otherUserId })
 
-      if (pendingOffer) {
-        console.log('📦 Processing buffered offer after accept...')
-        set({ pendingOffer: null })
-        await processOffer(pendingOffer, get, set)
-      } else {
-        console.warn('⚠️ No buffered offer — waiting for offer to arrive...')
-      }
     } catch (error: any) {
       console.error('❌ Failed to accept call:', error)
       set({ error: error.message || 'Failed to accept call' })
@@ -250,7 +140,6 @@ callNotificationService.reportConnectedCall()
     if (otherUserId) {
       socketService.endCall({ toUserId: otherUserId })
     }
-    webRTCService.cleanup()
     get().reset()
   },
 
@@ -313,48 +202,30 @@ callNotificationService.reportConnectedCall()
 
   toggleMute: () => {
     const newMuted = !get().isMuted
-    webRTCService.toggleAudio(!newMuted)
-    InCallManager.setMicrophoneMute(newMuted)
+    agoraService.toggleAudio(!newMuted) // toggleAudio takes 'enabled' so !newMuted is correct
     set({ isMuted: newMuted })
   },
 
   toggleVideo: () => {
     const newVideoEnabled = !get().isVideoEnabled
-    webRTCService.toggleVideo(newVideoEnabled)
+    agoraService.toggleVideo(newVideoEnabled)
     set({ isVideoEnabled: newVideoEnabled })
   },
 
   toggleSpeaker: () => {
     const newSpeakerOn = !get().isSpeakerOn
-    webRTCService.toggleSpeaker(newSpeakerOn)
+    agoraService.toggleSpeaker(newSpeakerOn)
     set({ isSpeakerOn: newSpeakerOn })
   },
 
   switchCamera: () => {
-    webRTCService.switchCamera()
+    agoraService.switchCamera()
     set((state) => ({ isFrontCamera: !state.isFrontCamera }))
   },
 
-  // reset: () => {
-  //     console.log('🔄 Resetting call state');
-  //     webRTCService.cleanup();
-  //     set({
-  //         status: 'idle',
-  //         callType: null,
-  //         conversationId: null,
-  //         otherUserId: null,
-  //         otherUserName: null,
-  //         localStream: null,
-  //         remoteStream: null,
-  //         isMuted: false,
-  //         isVideoEnabled: true,
-  //         error: null,
-  //     });
-  // },
-
   clearError: () => set({ error: null }),
 
-  initialize: () => {
+  initialize: async () => {
     console.log('🎬 Initializing call event listeners')
 
     if (isInitialized) {
@@ -363,159 +234,18 @@ callNotificationService.reportConnectedCall()
     }
 
     isInitialized = true
-    console.log('🎬 Initializing call event listeners')
-
     const state = get() as any
 
-    // WebRTC Signaling Event Handlers
-    const handleWebRTCOffer = async (payload: {
-      fromUserId: string
-      offer: RTCSessionDescriptionInit
-    }) => {
-      const { status, callType } = get()
-      const state = get() as any
-
-      // ✅ If not accepted yet — buffer it, NEVER drop it
-      if (status === 'idle' || status === 'incoming') {
-        console.log('📦 Buffering offer — status is:', status)
-        set({ pendingOffer: payload })
-        return
+    // Initialize Agora Engine
+    await agoraService.initEngine(
+      (uid) => {
+        set({ remoteUid: uid })
+      },
+      (uid) => {
+        set({ remoteUid: null })
+        // Usually if remote drops, we can decide to end call or wait.
       }
-
-      if (status !== 'connected') {
-        console.log('⚠️ Ignoring offer - unexpected status:', status)
-        return
-      }
-
-      if (state.isProcessingOffer) {
-        console.log('⚠️ Already processing an offer, ignoring duplicate')
-        return
-      }
-
-      // Set flag IMMEDIATELY to prevent race conditions
-      state.isProcessingOffer = true
-      console.log('🔒 Locked offer processing')
-
-      try {
-        console.log('📥 Received WebRTC offer from:', payload.fromUserId)
-
-        // Check if we already have a peer connection in the wrong state
-
-        // Check if we already have a peer connection in the wrong state
-        const pc = webRTCService.peerConnection
-        if (
-          pc &&
-          pc.signalingState !== 'stable' &&
-          pc.signalingState !== 'have-remote-offer'
-        ) {
-          console.log(
-            '⚠️ Ignoring offer - peer connection in state:',
-            pc.signalingState,
-          )
-          return
-        }
-
-        // Start local stream if not already started
-        if (!webRTCService.localStream) {
-          console.log('🎥 Starting local stream for answer...')
-          const stream = await webRTCService.startLocalStream(
-            callType === 'video',
-            true,
-          )
-          set({ localStream: stream })
-        }
-
-        // Create peer connection ONLY if it doesn't already exist
-        if (!webRTCService.peerConnection) {
-          console.log('🛠 Creating PeerConnection for answer...')
-          webRTCService.createPeerConnection(
-            (candidate) => {
-              console.log('🧊 ICE Candidate generated (answerer)')
-              socketService.sendWebRTCIceCandidate({
-                toUserId: payload.fromUserId,
-                candidate: candidate.toJSON(),
-              })
-            },
-            (stream) => {
-              console.log('📺 Remote stream received (answerer)')
-              set({ remoteStream: stream })
-            },
-          )
-        } else {
-          console.log('✅ PeerConnection already exists, reusing it')
-        }
-
-        // Check state before setting remote description
-        const currentState = webRTCService.peerConnection?.signalingState
-        console.log(
-          '🔍 Current signaling state before setRemoteDescription:',
-          currentState,
-        )
-
-        if (currentState && currentState !== 'stable') {
-          console.log(
-            '⚠️ Cannot set remote description - already in state:',
-            currentState,
-          )
-          return
-        }
-
-        // Set remote description
-        await webRTCService.setRemoteDescription(payload.offer)
-        console.log(
-          '✅ Remote description set, new state:',
-          webRTCService.peerConnection?.signalingState,
-        )
-
-        // Create and send answer
-        console.log('📜 Creating Answer...')
-        const answer = await webRTCService.createAnswer()
-        console.log('📤 Sending Answer to:', payload.fromUserId)
-        socketService.sendWebRTCAnswer({
-          toUserId: payload.fromUserId,
-          answer,
-        })
-
-        console.log('✅ Answer sent successfully')
-      } catch (error: any) {
-        console.error('❌ Failed to handle WebRTC offer:', error)
-        set({ error: error.message || 'Failed to process call' })
-      } finally {
-        // Release the lock after a small delay to prevent rapid re-processing
-        setTimeout(() => {
-          ;(get() as any).isProcessingOffer = false
-          console.log('🔓 Unlocked offer processing')
-        }, 1000)
-      }
-    }
-
-    const handleWebRTCAnswer = async (payload: {
-      fromUserId: string
-      answer: RTCSessionDescriptionInit
-    }) => {
-      console.log('🚨🚨🚨 ANSWER HANDLER CALLED! 🚨🚨🚨') // ← ADD THIS FIRST LINE
-      console.log('📥 📥 📥 ANSWER RECEIVED FROM:', payload.fromUserId)
-      try {
-        console.log('📥 Received WebRTC answer from:', payload.fromUserId)
-        await webRTCService.setRemoteDescription(payload.answer)
-        console.log('✅ Remote description set, connection established')
-      } catch (error: any) {
-        console.error('❌ Failed to handle WebRTC answer:', error)
-        set({ error: error.message || 'Failed to establish connection' })
-      }
-    }
-
-    const handleWebRTCIceCandidate = async (payload: {
-      fromUserId: string
-      candidate: RTCIceCandidateInit
-    }) => {
-      try {
-        console.log('🧊 Received ICE candidate from:', payload.fromUserId)
-        await webRTCService.addIceCandidate(payload.candidate)
-      } catch (error: any) {
-        console.error('❌ Failed to add ICE candidate:', error)
-      }
-    }
+    )
 
     // Call State Event Handlers
     const handleCallAccepted = (payload: { fromUserId: string }) => {
@@ -544,9 +274,6 @@ callNotificationService.reportConnectedCall()
     }
 
     // Save references for cleanup
-    state.handleWebRTCOfferRef = handleWebRTCOffer
-    state.handleWebRTCAnswerRef = handleWebRTCAnswer
-    state.handleWebRTCIceCandidateRef = handleWebRTCIceCandidate
     state.handleCallAcceptedRef = handleCallAccepted
     state.handleCallRejectedRef = handleCallRejected
     state.handleCallEndedRef = handleCallEnded
@@ -554,9 +281,6 @@ callNotificationService.reportConnectedCall()
     state.handleStopRingingRef = get().handleStopRinging
 
     // Register event listeners
-    socketService.onWebRTCOffer(handleWebRTCOffer)
-    socketService.onWebRTCAnswer(handleWebRTCAnswer)
-    socketService.onWebRTCIceCandidate(handleWebRTCIceCandidate)
     socketService.onCallAccepted(handleCallAccepted)
     socketService.onCallRejected(handleCallRejected)
     socketService.onCallEnded(handleCallEnded)
@@ -568,41 +292,37 @@ callNotificationService.reportConnectedCall()
 
   reset: () => {
     console.log('🔄 Resetting call state')
-callNotificationService.reportEndCall()
+    callNotificationService.reportEndCall()
     InCallManager.stopRingback()
     InCallManager.stopRingtone()
     ringService.cleanup()
     InCallManager.stop()
-    webRTCService.cleanup() // Clean up WebRTC peer connection
-    ;(useCallStore.getState() as any).isProcessingOffer = false
+    
+    agoraService.leaveChannel()
+
     set({
       status: 'idle',
       callType: null,
       conversationId: null,
       otherUserId: null,
       otherUserName: null,
-      localStream: null,
-      remoteStream: null,
+      remoteUid: null,
+      isMuted: false,
+      isVideoEnabled: true,
       isSpeakerOn: false,
+      isFrontCamera: true,
       error: null,
-      pendingOffer: null,
     })
-    // ✅ DO NOT remove socket listeners here
   },
 
   cleanup: () => {
     console.log('🧹 Cleaning up call event listeners')
-    isInitialized = false // ✅ Only reset here
+    isInitialized = false
 
-    webRTCService.cleanup()
+    agoraService.cleanup()
+
     // Remove socket listeners
     const state = get() as any
-    if (state.handleWebRTCOfferRef)
-      socketService.offWebRTCOffer(state.handleWebRTCOfferRef)
-    if (state.handleWebRTCAnswerRef)
-      socketService.offWebRTCAnswer(state.handleWebRTCAnswerRef)
-    if (state.handleWebRTCIceCandidateRef)
-      socketService.offWebRTCIceCandidate(state.handleWebRTCIceCandidateRef)
     if (state.handleCallAcceptedRef)
       socketService.offCallAccepted(state.handleCallAcceptedRef)
     if (state.handleCallRejectedRef)
@@ -620,11 +340,12 @@ callNotificationService.reportEndCall()
       conversationId: null,
       otherUserId: null,
       otherUserName: null,
-      localStream: null,
-      remoteStream: null,
+      remoteUid: null,
+      isMuted: false,
+      isVideoEnabled: true,
       isSpeakerOn: false,
+      isFrontCamera: true,
       error: null,
-      pendingOffer: null,
     })
     console.log('✅ Call cleanup complete')
   },

@@ -27,12 +27,29 @@ import { useAuthStore } from './src/stores/authStore'
 import { useCallStore } from '@/stores/callStore'
 import messaging from '@react-native-firebase/messaging'
 import {callNotificationService} from '@/services/call-notification.service'
+import { authService } from '@/services/auth.service'
 
 
 
 // Handles FCM when app is killed — must be outside any component
 messaging().setBackgroundMessageHandler(async remoteMessage => {
     if (remoteMessage.data?.type === 'incoming_call') {
+        const authState = useAuthStore.getState();
+        if (!authState.isAuthenticated) {
+            try {
+                console.log('User is logged out. Attempting to refresh token for incoming call...');
+                await authService.refreshToken();
+                // We successfully refreshed the token, the interceptor saves it to AsyncStorage.
+                // We could optionally fetch user data here if needed, but for now we just 
+                // re-authenticate so ChatScreen API calls don't fail immediately.
+                // Depending on backend, refreshToken might return user object. 
+                // For safety, we mark as authenticated temporarily if ChatScreen relies on it:
+                // authState.setTokens({ accessToken: 're-hydrated', refreshToken: 're-hydrated', expiresAt: 0 }); // if needed
+            } catch (err) {
+                console.warn('Failed to refresh token in background:', err);
+            }
+        }
+
         await callNotificationService.setup();
         await callNotificationService.displayIncomingCall(
             remoteMessage.data.callerName as string || 'Incoming Call',
@@ -79,7 +96,7 @@ export default function App() {
         if (currentLastActive) {
           const INACTIVITY_TIMEOUT = 5 * 60 * 1000 // 5 minutes
           if (Date.now() - currentLastActive > INACTIVITY_TIMEOUT) {
-            useAuthStore.getState().logout()
+            useAuthStore.getState().inactivityLogout()
           }
         }
       } else if (nextAppState === 'background') {

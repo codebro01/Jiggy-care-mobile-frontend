@@ -105,7 +105,7 @@ export function Badge({
 }
 
 // Status Badge - for appointment statuses
-type StatusBadgeStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'in_progress' | 'no_show' | 'pending_confirmation' | 'upcoming';
+type StatusBadgeStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'in_progress' | 'no_show' | 'pending_confirmation' | 'upcoming' | 'stale';
 
 interface StatusBadgeProps {
   status: StatusBadgeStatus;
@@ -166,7 +166,7 @@ export function StatusBadge({ status, style }: StatusBadgeProps) {
           {
             color: config.textColor,
             fontFamily: theme.fontFamily.medium,
-            fontSize: theme.fontSize.small,
+            fontSize: theme.fontSize.caption,
           },
         ]}
       >

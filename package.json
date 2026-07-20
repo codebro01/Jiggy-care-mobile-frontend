@@ -9,7 +9,6 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@config-plugins/react-native-webrtc": "^13.0.0",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/manrope": "^0.4.2",
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
@@ -54,7 +53,6 @@
     "react-native-screens": "^4.19.0",
     "react-native-sse": "^1.2.1",
     "react-native-web": "^0.21.0",
-    "react-native-webrtc": "^124.0.7",
     "socket.io-client": "^4.8.3",
     "zustand": "^5.0.9"
   },

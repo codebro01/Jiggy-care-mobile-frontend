@@ -166,7 +166,7 @@ export function Input({
             {
               color: error ? theme.colors.palette.error[500] : theme.colors.text.tertiary,
               fontFamily: theme.fontFamily.regular,
-              fontSize: theme.fontSize.small,
+              fontSize: theme.fontSize.caption,
             },
           ]}
         >

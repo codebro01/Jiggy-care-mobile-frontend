@@ -6,9 +6,6 @@ import {
     CallAcceptedPayload,
     CallRejectedPayload,
     CallEndedPayload,
-    WebRTCOfferPayload,
-    WebRTCAnswerPayload,
-    WebRTCIceCandidatePayload
 } from '../types';
 
 const BASE_URL = 'https://jiggy-care.onrender.com';
@@ -295,17 +292,7 @@ class SocketService {
         this.socket?.emit('call:end', payload);
     }
 
-    sendWebRTCOffer(payload: { toUserId: string; offer: RTCSessionDescriptionInit }) {
-        this.socket?.emit('webrtc:offer', payload);
-    }
 
-    sendWebRTCAnswer(payload: { toUserId: string; answer: RTCSessionDescriptionInit }) {
-        this.socket?.emit('webrtc:answer', payload);
-    }
-
-    sendWebRTCIceCandidate(payload: { toUserId: string; candidate: RTCIceCandidateInit }) {
-        this.socket?.emit('webrtc:ice-candidate', payload);
-    }
 
     // Call Signaling Listeners
 
@@ -373,29 +360,7 @@ class SocketService {
         this.socket?.off('call:missed', callback);
     }
 
-    onWebRTCOffer(callback: (payload: WebRTCOfferPayload) => void) {
-        this.socket?.on('webrtc:offer', callback);
-    }
 
-    offWebRTCOffer(callback: (payload: WebRTCOfferPayload) => void) {
-        this.socket?.off('webrtc:offer', callback);
-    }
-
-    onWebRTCAnswer(callback: (payload: WebRTCAnswerPayload) => void) {
-        this.socket?.on('webrtc:answer', callback);
-    }
-
-    offWebRTCAnswer(callback: (payload: WebRTCAnswerPayload) => void) {
-        this.socket?.off('webrtc:answer', callback);
-    }
-
-    onWebRTCIceCandidate(callback: (payload: WebRTCIceCandidatePayload) => void) {
-        this.socket?.on('webrtc:ice-candidate', callback);
-    }
-
-    offWebRTCIceCandidate(callback: (payload: WebRTCIceCandidatePayload) => void) {
-        this.socket?.off('webrtc:ice-candidate', callback);
-    }
 }
 
 export const socketService = new SocketService();

@@ -187,10 +187,8 @@ class RingService {
             this.ringtoneSound = sound;
             await sound.playAsync();
 
-            // Also vibrate in a pattern
-            if (Platform.OS === 'android') {
-                Vibration.vibrate([0, 500, 1000, 500], true);
-            } else {
+            // Vibrate for iOS
+            if (Platform.OS === 'ios') {
                 this.vibrationInterval = setInterval(() => Vibration.vibrate(), 2000);
             }
 
