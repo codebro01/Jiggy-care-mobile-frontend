@@ -86,11 +86,11 @@ class AgoraService {
                 throw new Error('Failed to fetch Agora token');
             }
 
+            // Always enable audio for both audio and video calls
+            this.engine.enableAudio();
             if (isVideo) {
                 this.engine.enableVideo();
                 this.engine.startPreview();
-            } else {
-                this.engine.enableAudio();
             }
 
             console.log(`[CALL_TRACE][Agora] 📡 Calling joinChannel. Channel: ${channelName}, UID: ${uid}, isVideo: ${isVideo}`);

@@ -33,6 +33,7 @@ class CallNotificationService {
       id: 'incoming_call',
       title: `Incoming ${callType} call`,
       body: callerName,
+      data: this.pendingCallData,
       android: {
         channelId: CHANNEL_ID,
         category: AndroidCategory.CALL,
@@ -76,20 +77,36 @@ class CallNotificationService {
     this.pendingCallData = null
   }
 
-  registerListeners(callbacks: {
-    onAnswerCall: () => void
+  async registerListeners(callbacks: {
+    onAnswerCall: (data?: any) => void
     onEndCall: () => void
   }) {
+    // 1. Check if the app was launched by clicking a notification
+    const initialNotification = await notifee.getInitialNotification()
+    if (initialNotification?.notification.id === 'incoming_call') {
+      const { pressAction, notification } = initialNotification
+      if (pressAction?.id === 'answer' || pressAction?.id === 'default') {
+        console.log('✅ User answered call from initial notification (App was dead/background)')
+        this.cancelCallNotification()
+        callbacks.onAnswerCall(notification.data)
+      } else if (pressAction?.id === 'decline') {
+        console.log('🔴 User declined call from initial notification')
+        this.cancelCallNotification()
+        callbacks.onEndCall()
+      }
+    }
+
+    // 2. Listen for events while the app is in foreground
     return notifee.onForegroundEvent(({ type, detail }) => {
       if (detail.notification?.id !== 'incoming_call') return
 
       if (
         type === EventType.ACTION_PRESS &&
-        detail.pressAction?.id === 'answer'
+        (detail.pressAction?.id === 'answer' || detail.pressAction?.id === 'default')
       ) {
-        console.log('✅ User answered call from notification')
+        console.log('✅ User answered call from notification (Foreground)')
         this.cancelCallNotification()
-        callbacks.onAnswerCall()
+        callbacks.onAnswerCall(detail.notification?.data)
       }
 
       if (
