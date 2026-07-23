@@ -5,7 +5,7 @@ import notifee, {
 } from '@notifee/react-native'
 import { AppState, Platform } from 'react-native'
 
-const CHANNEL_ID = 'jiggy_care_calls'
+const CHANNEL_ID = 'jiggy_care_calls_v2' // bumped to force fresh channel with custom sound
 
 class CallNotificationService {
   private pendingCallData: any = null
@@ -17,9 +17,9 @@ class CallNotificationService {
       name: 'Incoming Calls',
       importance: AndroidImportance.HIGH,
       vibration: true,
-      sound: 'default',
+      sound: 'incoming_call', // references android/app/src/main/res/raw/incoming_call.aac
     })
-    console.log('✅ Notifee call channel created')
+    console.log('✅ Notifee call channel created with custom ringtone')
   }
 
   async displayIncomingCall(

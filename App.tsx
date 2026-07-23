@@ -33,7 +33,9 @@ import { authService } from '@/services/auth.service'
 
 // Handles FCM when app is killed — must be outside any component
 messaging().setBackgroundMessageHandler(async remoteMessage => {
-    if (remoteMessage.data?.type === 'incoming_call') {
+    const type = remoteMessage.data?.type;
+
+    if (type === 'incoming_call') {
         const authState = useAuthStore.getState();
         if (!authState.isAuthenticated) {
             try {
@@ -60,6 +62,12 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
                 fromUserId: remoteMessage.data.callerUserId,
             }
         );
+    }
+
+    // Dismiss the incoming call notification if caller cancelled/ended/rejected the call
+    if (type === 'call_ended') {
+        console.log('📵 Call ended/cancelled in background — dismissing notification');
+        await callNotificationService.cancelCallNotification();
     }
 });
 

@@ -1,12 +1,6 @@
 import { Audio } from 'expo-av';
 import { Vibration, Platform } from 'react-native';
 
-/**
- * RingService – plays ringtone (incoming) and ringback (outgoing) tones.
- *
- * Uses expo-av Audio.Sound with programmatically-generated PCM WAV tones
- * encoded as base64 data URIs, so no external sound files are needed.
- */
 
 // ── Tone Generation Helpers ─────────────────────────────────────────
 
@@ -107,12 +101,10 @@ class RingService {
     private isStartingRingtone = false;
 
     private ringbackBase64: string | null = null;
-    private ringtoneBase64: string | null = null;
 
-    /** Pre-generate tone data (call once at init) */
+    /** Pre-generate ringback tone data (call once at init) */
     init() {
         this.ringbackBase64 = buildRingbackWAV();
-        this.ringtoneBase64 = buildRingtoneWAV();
     }
 
     // ── Ringback (outgoing call ringing on other side) ──────────────
@@ -163,15 +155,7 @@ class RingService {
         this.isStartingRingtone = true;
 
         try {
-            // Native call screen handles ringtone on Android
-            if (Platform.OS === 'android') {
-                console.log('📱 Skipping custom ringtone — native call UI handles it');
-                return;
-            }
-
             await this.stopRingtone();
-
-            if (!this.ringtoneBase64) this.init();
 
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: false,
@@ -179,20 +163,19 @@ class RingService {
                 staysActiveInBackground: true,
             });
 
-            console.log('📱 Creating ringtone sound...');
+            console.log('📱 Creating ringtone sound from asset...');
+            // Use the real incoming_call.aac asset file
             const { sound } = await Audio.Sound.createAsync(
-                { uri: `data:audio/wav;base64,${this.ringtoneBase64}` },
+                require('../../assets/incoming call.aac'),
                 { isLooping: true, volume: 1.0 }
             );
             this.ringtoneSound = sound;
             await sound.playAsync();
 
-            // Vibrate for iOS
-            if (Platform.OS === 'ios') {
-                this.vibrationInterval = setInterval(() => Vibration.vibrate(), 2000);
-            }
+            // Vibrate on both platforms
+            this.vibrationInterval = setInterval(() => Vibration.vibrate([0, 500, 500]), 2000);
 
-            console.log('📱 Ringtone started');
+            console.log('📱 Ringtone started (incoming call.aac)');
         } catch (err) {
             console.error('Failed to start ringtone:', err);
         } finally {
