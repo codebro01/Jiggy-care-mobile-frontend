@@ -166,7 +166,7 @@ class RingService {
             console.log('📱 Creating ringtone sound from asset...');
             // Use the real incoming_call.aac asset file
             const { sound } = await Audio.Sound.createAsync(
-                require('../../assets/incoming call.aac'),
+                require('../../assets/incoming_call.aac'),
                 { isLooping: true, volume: 1.0 }
             );
             this.ringtoneSound = sound;
@@ -175,7 +175,7 @@ class RingService {
             // Vibrate on both platforms
             this.vibrationInterval = setInterval(() => Vibration.vibrate([0, 500, 500]), 2000);
 
-            console.log('📱 Ringtone started (incoming call.aac)');
+            console.log('📱 Ringtone started (incoming_call.aac)');
         } catch (err) {
             console.error('Failed to start ringtone:', err);
         } finally {

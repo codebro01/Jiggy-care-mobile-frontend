@@ -29,30 +29,44 @@ class CallNotificationService {
   ) {
     this.pendingCallData = { ...callData, callType }
 
+    // Show a full-screen intent notification that wakes the device and launches
+    // the app. The actual Accept/Decline UI is handled by the React Native CallModal.
     const notificationId = await notifee.displayNotification({
       id: 'incoming_call',
-      title: `Incoming ${callType} call`,
-      body: callerName,
+      title: `Incoming ${callType === 'video' ? '📹 Video' : '📞 Audio'} Call`,
+      body: `${callerName} is calling...`,
       data: this.pendingCallData,
       android: {
         channelId: CHANNEL_ID,
         category: AndroidCategory.CALL,
         importance: AndroidImportance.HIGH,
-        fullScreenAction: { id: 'default', launchActivity: 'default' }, // wakes screen
-        actions: [
-          {
-            title: '✅ Answer',
-            pressAction: { id: 'answer', launchActivity: 'default' },
-          },
-          { title: '❌ Decline', pressAction: { id: 'decline' } },
-        ],
+        // This is what launches the app full-screen when device is locked/idle
+        fullScreenAction: {
+          id: 'default',
+          launchActivity: 'default',
+        },
         ongoing: true,
         autoCancel: false,
+        // Show a single "Open" action so user can get into app from shade
+        actions: [
+          {
+            title: '📞 Open App',
+            pressAction: { id: 'default', launchActivity: 'default' },
+          },
+          {
+            title: '❌ Decline',
+            pressAction: { id: 'decline' },
+          },
+        ],
+        pressAction: {
+          id: 'default',
+          launchActivity: 'default',
+        },
       },
     })
 
     this.currentNotificationId = notificationId
-    console.log(`📱 Displaying call notification for ${callerName}`)
+    console.log(`📱 Displaying full-screen call notification for ${callerName}`)
     return notificationId
   }
 

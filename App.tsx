@@ -127,10 +127,13 @@ export default function App() {
         await callNotificationService.setup()
 
         callNotificationService.registerListeners({
-          onAnswerCall: () => {
-            const callData = callNotificationService.getPendingCallData()
+          onAnswerCall: (data?: any) => {
+            // Use data from the notification if available, otherwise fall back to pendingCallData
+            const callData = data || callNotificationService.getPendingCallData()
             if (callData) {
               callNotificationService.clearPendingCallData()
+
+              // Navigate to ChatScreen first so the socket connects and Agora can join
               navigationRef.current?.navigate('ChatScreen', {
                 conversationId: callData.conversationId,
                 callType: callData.callType,
@@ -138,6 +141,19 @@ export default function App() {
                 fromUserId: callData.fromUserId,
                 isIncoming: true,
               })
+
+              // Immediately trigger the full-screen CallModal via the store
+              // so the user sees the incoming call UI straight away
+              setTimeout(() => {
+                const callStoreState = useCallStore.getState()
+                if (callStoreState.status === 'idle') {
+                  callStoreState.handleIncomingCall({
+                    callType: callData.callType || 'audio',
+                    conversationId: callData.conversationId,
+                    fromUserId: callData.fromUserId,
+                  })
+                }
+              }, 500) // brief delay lets navigation settle
             }
           },
           onEndCall: () => {
