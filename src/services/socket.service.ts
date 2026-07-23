@@ -277,18 +277,22 @@ class SocketService {
     // Call Signaling Methods
 
     initiateCall(payload: CallInitiatePayload) {
+        console.log('[CALL_TRACE][Socket] 📤 Emitting call:initiate with payload:', payload);
         this.socket?.emit('call:initiate', payload);
     }
 
     acceptCall(payload: { toUserId: string }) {
+        console.log('[CALL_TRACE][Socket] 📤 Emitting call:accept with payload:', payload);
         this.socket?.emit('call:accept', payload);
     }
 
     rejectCall(payload: { toUserId: string; reason?: string }) {
+        console.log('[CALL_TRACE][Socket] 📤 Emitting call:reject with payload:', payload);
         this.socket?.emit('call:reject', payload);
     }
 
     endCall(payload: { toUserId: string }) {
+        console.log('[CALL_TRACE][Socket] 📤 Emitting call:end with payload:', payload);
         this.socket?.emit('call:end', payload);
     }
 

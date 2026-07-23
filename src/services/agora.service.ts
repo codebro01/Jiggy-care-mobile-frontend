@@ -24,9 +24,9 @@ class AgoraService {
                         throw new Error(`Permission ${permission} not granted`);
                     }
                 }
-                console.log('✅ All permissions granted');
+                console.log('[CALL_TRACE][Agora] ✅ All permissions (Camera/Mic) granted');
             } catch (err: any) {
-                console.error('Permission error:', err);
+                console.error('[CALL_TRACE][Agora] ❌ Permission error:', err);
                 throw err;
             }
         }
@@ -39,30 +39,30 @@ class AgoraService {
         if (this.isInitialized) return;
 
         try {
-            console.log('🎬 Initializing Agora Engine...');
+            console.log(`[CALL_TRACE][Agora] 🎬 Initializing Agora Engine with App ID: "${APP_ID}"`);
             this.engine = createAgoraRtcEngine();
             this.engine.initialize({ appId: APP_ID });
 
             this.engine.registerEventHandler({
                 onJoinChannelSuccess: (connection, elapsed) => {
-                    console.log('✅ Joined channel successfully', connection.channelId);
+                    console.log('[CALL_TRACE][Agora] ✅ Joined channel successfully. Channel ID:', connection.channelId, 'Elapsed:', elapsed);
                 },
                 onUserJoined: (connection, remoteUid, elapsed) => {
-                    console.log('✅ Remote user joined:', remoteUid);
+                    console.log(`[CALL_TRACE][Agora] ✅ Remote user joined. UID: ${remoteUid}, Elapsed: ${elapsed}`);
                     onUserJoined(remoteUid);
                 },
                 onUserOffline: (connection, remoteUid, reason) => {
-                    console.log('🔴 Remote user offline:', remoteUid);
+                    console.log(`[CALL_TRACE][Agora] 🔴 Remote user offline. UID: ${remoteUid}, Reason: ${reason}`);
                     onUserOffline(remoteUid);
                 },
                 onError: (err, msg) => {
-                    console.error('Agora Error:', err, msg);
+                    console.error('[CALL_TRACE][Agora] ❌ Agora Error. Code:', err, 'Message:', msg);
                 }
             });
 
             this.isInitialized = true;
         } catch (e) {
-            console.error('Error initializing Agora engine:', e);
+            console.error('[CALL_TRACE][Agora] ❌ Error initializing Agora engine:', e);
             throw e;
         }
     }
@@ -73,12 +73,16 @@ class AgoraService {
         await this.checkPermissions(isVideo, true);
 
         try {
-            console.log(`🔑 Fetching token for channel: ${channelName}`);
+            console.log(`[CALL_TRACE][Agora] 🔑 Fetching token for channel: ${channelName}`);
             // Fetch token from backend
             const response = await api.get<any>(`/agora/token?channelName=${channelName}`);
+            console.log(`[CALL_TRACE][Agora] 📦 Full backend response:`, JSON.stringify(response, null, 2));
             const token = typeof response === 'string' ? response : response?.token;
+            // Use the uid from the backend response if it exists, otherwise fallback to 0
+            const uid = typeof response === 'string' ? 0 : (response?.uid || 0);
 
             if (!token) {
+                console.error(`[CALL_TRACE][Agora] ❌ Failed to fetch token for channel ${channelName}`);
                 throw new Error('Failed to fetch Agora token');
             }
 
@@ -89,8 +93,8 @@ class AgoraService {
                 this.engine.enableAudio();
             }
 
-            console.log(`📡 Joining channel: ${channelName} with token`);
-            this.engine.joinChannel(token, channelName, 0, {
+            console.log(`[CALL_TRACE][Agora] 📡 Calling joinChannel. Channel: ${channelName}, UID: ${uid}, isVideo: ${isVideo}`);
+            this.engine.joinChannel(token, channelName, uid, {
                 channelProfile: ChannelProfileType.ChannelProfileCommunication,
                 clientRoleType: ClientRoleType.ClientRoleBroadcaster,
                 publishMicrophoneTrack: true,
@@ -102,14 +106,14 @@ class AgoraService {
             this.currentChannel = channelName;
             InCallManager.start({ media: isVideo ? 'video' : 'audio' });
         } catch (e) {
-            console.error('Failed to join channel:', e);
+            console.error('[CALL_TRACE][Agora] ❌ Exception in joinChannel:', e);
             throw e;
         }
     }
 
     leaveChannel() {
         if (this.engine) {
-            console.log('🔌 Leaving channel...');
+            console.log(`[CALL_TRACE][Agora] 🔌 Leaving channel ${this.currentChannel || 'unknown'}...`);
             this.engine.leaveChannel();
             this.engine.stopPreview();
             this.engine.disableVideo();
@@ -121,30 +125,35 @@ class AgoraService {
 
     toggleAudio(enabled: boolean) {
         if (this.engine) {
+            console.log(`[CALL_TRACE][Agora] 🎤 Toggling Local Audio: ${enabled ? 'Unmuted' : 'Muted'}`);
             this.engine.enableLocalAudio(enabled);
         }
     }
 
     toggleVideo(enabled: boolean) {
         if (this.engine) {
+            console.log(`[CALL_TRACE][Agora] 📹 Toggling Local Video: ${enabled ? 'Enabled' : 'Disabled'}`);
             this.engine.enableLocalVideo(enabled);
         }
     }
 
     switchCamera() {
         if (this.engine) {
+            console.log('[CALL_TRACE][Agora] 🔄 Switching Camera');
             this.engine.switchCamera();
         }
     }
 
     toggleSpeaker(enabled: boolean) {
         if (this.engine) {
+            console.log(`[CALL_TRACE][Agora] 🔊 Toggling Speakerphone: ${enabled ? 'ON' : 'OFF'}`);
             this.engine.setEnableSpeakerphone(enabled);
             InCallManager.setForceSpeakerphoneOn(enabled);
         }
     }
 
     cleanup() {
+        console.log('[CALL_TRACE][Agora] 🧹 Cleaning up Agora Engine...');
         this.leaveChannel();
         if (this.engine) {
             this.engine.unregisterEventHandler({});

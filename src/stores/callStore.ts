@@ -73,7 +73,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
   
   initiateCall: async (toUserId, conversationId, type, otherUserName) => {
     try {
-      console.log('🚀 Initiating call:', { toUserId, conversationId, type })
+      console.log('[CALL_TRACE][Store] 🚀 Initiating call:', { toUserId, conversationId, type });
       set({
         status: 'calling',
         callType: type,
@@ -84,7 +84,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
       })
 
       // Notify backend to ring the other user
-      console.log('📞 Notifying backend of call initiation...')
+      console.log('[CALL_TRACE][Store] 📞 Notifying backend of call initiation...');
       socketService.initiateCall({
         toUserId,
         conversationId,
@@ -93,11 +93,11 @@ export const useCallStore = create<CallState>()((set, get) => ({
 
       // We don't join Agora channel until the other person accepts, 
       // or we can join now. Usually caller joins now and waits.
-      console.log('📡 Joining Agora channel...', conversationId)
+      console.log('[CALL_TRACE][Store] 📡 Joining Agora channel...', conversationId);
       await agoraService.joinChannel(conversationId, type === 'video')
 
     } catch (error: any) {
-      console.error('❌ Failed to initiate call:', error)
+      console.error('[CALL_TRACE][Store] ❌ Failed to initiate call:', error);
       set({ error: error.message || 'Failed to initiate call' })
       setTimeout(() => get().reset(), 3000)
     }
@@ -108,20 +108,20 @@ export const useCallStore = create<CallState>()((set, get) => ({
     if (!otherUserId || !conversationId) return
 
     try {
-      console.log('📞 Accepting call from:', otherUserId)
+      console.log('[CALL_TRACE][Store] 📞 Accepting call from:', otherUserId);
       ringService.stopRingtone()
       callNotificationService.reportConnectedCall()
       
       set({ status: 'connected', error: null })
 
-      console.log('📡 Joining Agora channel...', conversationId)
+      console.log('[CALL_TRACE][Store] 📡 Joining Agora channel...', conversationId);
       await agoraService.joinChannel(conversationId, callType === 'video')
 
       // Notify the other peer that we accepted
       socketService.acceptCall({ toUserId: otherUserId })
 
     } catch (error: any) {
-      console.error('❌ Failed to accept call:', error)
+      console.error('[CALL_TRACE][Store] ❌ Failed to accept call:', error);
       set({ error: error.message || 'Failed to accept call' })
       setTimeout(() => get().reset(), 3000)
     }
@@ -129,6 +129,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
 
   rejectCall: () => {
     const { otherUserId } = get()
+    console.log('[CALL_TRACE][Store] 🚫 Rejecting call...');
     if (otherUserId) {
       socketService.rejectCall({ toUserId: otherUserId })
     }
@@ -136,6 +137,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
   },
 
   endCall: () => {
+    console.log('[CALL_TRACE][Store] 🔴 Ending call...');
     const { otherUserId } = get()
     if (otherUserId) {
       socketService.endCall({ toUserId: otherUserId })
@@ -144,7 +146,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
   },
 
   handleIncomingCall: (payload) => {
-    console.log('📞 Incoming call received:', payload)
+    console.log('[CALL_TRACE][Store] 📞 Incoming call received:', payload);
     ringService.startRingtone()
 
     // Try to find the name from the appointments store
@@ -174,7 +176,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
   },
 
   handleRinging: () => {
-    console.log('🔔 Call is ringing on the other side')
+    console.log('[CALL_TRACE][Store] 🔔 Call is ringing on the other side');
     if (get().status === 'calling') {
       ringService.startRingback()
       set({ status: 'ringing' })
@@ -182,7 +184,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
   },
 
   handleStopRinging: () => {
-    console.log('🔕 Stop ringing')
+    console.log('[CALL_TRACE][Store] 🔕 Stop ringing');
     ringService.stopRingtone()
     ringService.stopRingback()
     InCallManager.stopRingtone()
@@ -190,12 +192,12 @@ export const useCallStore = create<CallState>()((set, get) => ({
   },
 
   handleCallMissed: (payload) => {
-    console.log('📵 Call missed from:', payload.fromUserId)
+    console.log('[CALL_TRACE][Store] 📵 Call missed from:', payload.fromUserId);
     get().reset()
   },
 
   handleNoAnswer: () => {
-    console.log('📵 No answer')
+    console.log('[CALL_TRACE][Store] 📵 No answer');
     set({ error: 'No answer' })
     setTimeout(() => get().reset(), 3000)
   },
@@ -226,10 +228,10 @@ export const useCallStore = create<CallState>()((set, get) => ({
   clearError: () => set({ error: null }),
 
   initialize: async () => {
-    console.log('🎬 Initializing call event listeners')
+    console.log('[CALL_TRACE][Store] 🎬 Initializing call event listeners');
 
     if (isInitialized) {
-      console.log('⚠️ Already initialized, skipping duplicate registration')
+      console.log('[CALL_TRACE][Store] ⚠️ Already initialized, skipping duplicate registration');
       return
     }
 
@@ -249,7 +251,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
 
     // Call State Event Handlers
     const handleCallAccepted = (payload: { fromUserId: string }) => {
-      console.log('✅ Call accepted by:', payload.fromUserId)
+      console.log('[CALL_TRACE][Store] ✅ Call accepted by remote user:', payload.fromUserId);
       InCallManager.stopRingback()
       ringService.stopRingback()
       set({ status: 'connected', error: null })
@@ -259,17 +261,13 @@ export const useCallStore = create<CallState>()((set, get) => ({
       fromUserId: string
       reason?: string
     }) => {
-      console.log(
-        '🔴 Call rejected by:',
-        payload.fromUserId,
-        payload.reason || '',
-      )
+      console.log('[CALL_TRACE][Store] 🔴 Call rejected by remote user:', payload.fromUserId, payload.reason || '');
       set({ error: payload.reason || 'Call rejected' })
       setTimeout(() => get().reset(), 3000)
     }
 
     const handleCallEnded = (payload: { fromUserId: string }) => {
-      console.log('🔴 Call ended by:', payload.fromUserId)
+      console.log('[CALL_TRACE][Store] 🔴 Call ended by remote user:', payload.fromUserId);
       get().reset()
     }
 
@@ -287,11 +285,11 @@ export const useCallStore = create<CallState>()((set, get) => ({
     socketService.onCallMissed(get().handleCallMissed)
     socketService.onCallStopRinging(get().handleStopRinging)
 
-    console.log('✅ Call event listeners initialized')
+    console.log('[CALL_TRACE][Store] ✅ Call event listeners initialized');
   },
 
   reset: () => {
-    console.log('🔄 Resetting call state')
+    console.log('[CALL_TRACE][Store] 🔄 Resetting call state');
     callNotificationService.reportEndCall()
     InCallManager.stopRingback()
     InCallManager.stopRingtone()
@@ -316,7 +314,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
   },
 
   cleanup: () => {
-    console.log('🧹 Cleaning up call event listeners')
+    console.log('[CALL_TRACE][Store] 🧹 Cleaning up call event listeners');
     isInitialized = false
 
     agoraService.cleanup()
@@ -347,6 +345,6 @@ export const useCallStore = create<CallState>()((set, get) => ({
       isFrontCamera: true,
       error: null,
     })
-    console.log('✅ Call cleanup complete')
+    console.log('[CALL_TRACE][Store] ✅ Call cleanup complete');
   },
 }))
