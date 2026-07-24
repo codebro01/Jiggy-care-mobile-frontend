@@ -25,6 +25,7 @@ import { AppNavigator } from './src/navigation'
 import { OneSignal } from 'react-native-onesignal'
 import { useAuthStore } from './src/stores/authStore'
 import { useCallStore } from '@/stores/callStore'
+import { useChatStore } from '@/stores/chatStore'
 import messaging from '@react-native-firebase/messaging'
 import { callNotificationService } from '@/services/call-notification.service'
 import { authService } from '@/services/auth.service'
@@ -36,6 +37,7 @@ import {
   addCallAnsweredListener,
   addCallEndedListener,
   fulfillIncomingCallConnected,
+  endCall,
 } from 'expo-callkit-telecom'
 
 // Handles FCM when app is killed — must be outside any component
@@ -162,23 +164,39 @@ export default function App() {
           console.warn('Failed to register VoIP push:', err)
         }
 
+        // Clean up stale native call sessions caused by hot-reloads
+        try {
+          const session = await getActiveCallSession()
+          if (session && useCallStore.getState().status === 'idle') {
+            console.log('🧹 Cleaning up stale native call session on boot:', session.id)
+            await endCall(session.id)
+          }
+        } catch (e) {
+          console.warn('Failed to cleanup stale call session:', e)
+        }
+
+        // Clean up stale Notifee notifications from previous versions
+        try {
+          const notifee = require('@notifee/react-native').default
+          await notifee.cancelAllNotifications()
+        } catch (e) {
+          // ignore
+        }
+
         subAnswered = addCallAnsweredListener(async (event) => {
           console.log('📞 expo-callkit-telecom: Native call answered, event:', event)
           try {
             const session = await getActiveCallSession()
             const metadata = session?.incomingCallEvent?.metadata as any
             if (metadata) {
-              // Navigate to ChatScreen first so the socket connects and Agora can join
-              navigationRef.current?.navigate('ChatScreen', {
-                conversationId: metadata.conversationId,
-                callType: metadata.callType,
-                bookingId: metadata.bookingId,
-                fromUserId: metadata.fromUserId,
-                isIncoming: true,
-              })
+              // Ensure socket is connected so we can notify the backend that we accepted
+              const chatStoreState = useChatStore.getState()
+              if (!chatStoreState.isSocketConnected) {
+                await chatStoreState.connectSocket().catch(e => console.warn('Socket connect failed', e))
+              }
 
               // Immediately trigger the full-screen CallModal via the store
-              // so the user sees the incoming call UI straight away
+              // so the user sees the active call UI straight away
               setTimeout(async () => {
                 const callStoreState = useCallStore.getState()
                 if (callStoreState.status === 'idle') {
@@ -228,7 +246,6 @@ export default function App() {
                 callType,
                 bookingId,
                 fromUserId,
-                isIncoming: true,
               })
 
               setTimeout(() => {
