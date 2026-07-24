@@ -108,6 +108,15 @@ export const useCallStore = create<CallState>()((set, get) => ({
         callType: type,
       })
 
+      // Ensure Agora engine is ready before joining
+      if (!agoraService.isInitialized) {
+        console.log('[CALL_TRACE][Store] ⚙️ Agora engine not ready, initializing now...');
+        await agoraService.initEngine(
+          (uid) => { useCallStore.setState({ remoteUid: uid }) },
+          (_uid) => { useCallStore.setState({ remoteUid: null }) }
+        )
+      }
+
       // We don't join Agora channel until the other person accepts, 
       // or we can join now. Usually caller joins now and waits.
       console.log('[CALL_TRACE][Store] 📡 Joining Agora channel...', conversationId);
@@ -129,6 +138,16 @@ export const useCallStore = create<CallState>()((set, get) => ({
       InCallManager.stopRingtone()
       
       set({ status: 'connected', error: null })
+
+      // Ensure Agora engine is initialized — it won't be if the call came in
+      // via OneSignal/FCM and the user never opened ChatScreen first.
+      if (!agoraService.isInitialized) {
+        console.log('[CALL_TRACE][Store] ⚙️ Agora engine not ready, initializing now...');
+        await agoraService.initEngine(
+          (uid) => { useCallStore.setState({ remoteUid: uid }) },
+          (_uid) => { useCallStore.setState({ remoteUid: null }) }
+        )
+      }
 
       console.log('[CALL_TRACE][Store] 📡 Joining Agora channel...', conversationId);
       await agoraService.joinChannel(conversationId, callType === 'video')
@@ -216,7 +235,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
   handleRinging: () => {
     console.log('[CALL_TRACE][Store] 🔔 Call is ringing on the other side');
     if (get().status === 'calling') {
-      InCallManager.startRingback('_DEFAULT_')
+      InCallManager.startRingback('_BUNDLE_') // plays incallmanager_ringback.aac
       set({ status: 'ringing' })
     }
   },
