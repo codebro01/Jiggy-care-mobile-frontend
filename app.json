@@ -41,28 +41,29 @@
         "FOREGROUND_SERVICE",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.USE_FULL_SCREEN_INTENT"
       ],
       "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-"plugins": [
-  [
-    "onesignal-expo-plugin",
-    {
-      "mode": "development"
-    }
-  ],
-  "@react-native-firebase/app",
-  "@react-native-firebase/messaging",
-  "expo-font",
-  "expo-web-browser",
-  "@react-native-google-signin/google-signin",
+    "plugins": [
+      [
+        "onesignal-expo-plugin",
+        {
+          "mode": "development"
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      "expo-font",
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin",
 
-  "@react-native-community/datetimepicker"
-],
+      "@react-native-community/datetimepicker"
+    ],
     "extra": {
       "eas": {
         "projectId": "0ab53446-482b-47c3-b4b3-e132fb1419fb"

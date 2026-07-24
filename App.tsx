@@ -26,50 +26,73 @@ import { OneSignal } from 'react-native-onesignal'
 import { useAuthStore } from './src/stores/authStore'
 import { useCallStore } from '@/stores/callStore'
 import messaging from '@react-native-firebase/messaging'
-import {callNotificationService} from '@/services/call-notification.service'
+import { callNotificationService } from '@/services/call-notification.service'
 import { authService } from '@/services/auth.service'
-
-
+import InCallManager from 'react-native-incall-manager'
 
 // Handles FCM when app is killed — must be outside any component
-messaging().setBackgroundMessageHandler(async remoteMessage => {
-    const type = remoteMessage.data?.type;
+messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+  const type = remoteMessage.data?.type
+  const data = remoteMessage.data
 
-    if (type === 'incoming_call') {
-        const authState = useAuthStore.getState();
-        if (!authState.isAuthenticated) {
-            try {
-                console.log('User is logged out. Attempting to refresh token for incoming call...');
-                await authService.refreshToken();
-                // We successfully refreshed the token, the interceptor saves it to AsyncStorage.
-                // We could optionally fetch user data here if needed, but for now we just 
-                // re-authenticate so ChatScreen API calls don't fail immediately.
-                // Depending on backend, refreshToken might return user object. 
-                // For safety, we mark as authenticated temporarily if ChatScreen relies on it:
-                // authState.setTokens({ accessToken: 're-hydrated', refreshToken: 're-hydrated', expiresAt: 0 }); // if needed
-            } catch (err) {
-                console.warn('Failed to refresh token in background:', err);
-            }
-        }
-
-        await callNotificationService.setup();
-        await callNotificationService.displayIncomingCall(
-            remoteMessage.data.callerName as string || 'Incoming Call',
-            (remoteMessage.data.callType as 'video' | 'audio') || 'video',
-            {
-                conversationId: remoteMessage.data.conversationId,
-                bookingId: remoteMessage.data.bookingId,
-                fromUserId: remoteMessage.data.callerUserId,
-            }
-        );
+  if (type === 'incoming_call') {
+    if (!data) {
+      console.warn('Incoming call message missing data payload')
+      return
     }
 
-    // Dismiss the incoming call notification if caller cancelled/ended/rejected the call
-    if (type === 'call_ended') {
-        console.log('📵 Call ended/cancelled in background — dismissing notification');
-        await callNotificationService.cancelCallNotification();
+    const authState = useAuthStore.getState()
+    if (!authState.isAuthenticated) {
+      try {
+        console.log(
+          'User is logged out. Attempting to refresh token for incoming call...',
+        )
+        await authService.refreshToken()
+      } catch (err) {
+        console.warn('Failed to refresh token in background:', err)
+      }
     }
-});
+
+    // Show the Notifee full-screen / heads-up notification
+    await callNotificationService.setup()
+
+    const callType = data.callType === 'audio' ? 'audio' : 'video'
+
+    await callNotificationService.displayIncomingCall(
+      (data.callerName as string) || 'Incoming Call',
+      callType,
+      {
+        conversationId: data.conversationId,
+        bookingId: data.bookingId,
+        fromUserId: data.callerUserId,
+      },
+    )
+
+    // Start looping ringtone via InCallManager.
+    // '_BUNDLE_' maps to res/raw/incallmanager_ringtone.aac (our custom sound).
+    // InCallManager is a native Android AudioManager module — works in headless JS.
+    try {
+      InCallManager.startRingtone('_BUNDLE_')
+      console.log('🔔 InCallManager ringtone started in background (incallmanager_ringtone.aac)')
+    } catch (err) {
+      console.warn('InCallManager.startRingtone failed in background:', err)
+    }
+  }
+
+  // Dismiss the incoming call notification and stop ringtone when call ends or is cancelled by caller
+  const reason = data?.reason
+  if (type === 'call_ended' || type === 'call_cancelled' || reason === 'cancelled' || reason === 'ended') {
+    console.log(
+      '📵 Call ended/cancelled in background — dismissing notification & stopping ringtone',
+    )
+    await callNotificationService.cancelCallNotification()
+    try {
+      InCallManager.stopRingtone()
+    } catch (err) {
+      console.warn('InCallManager.stopRingtone failed:', err)
+    }
+  }
+})
 
 // Prevent splash screen from auto-hiding
 
@@ -129,9 +152,15 @@ export default function App() {
         callNotificationService.registerListeners({
           onAnswerCall: (data?: any) => {
             // Use data from the notification if available, otherwise fall back to pendingCallData
-            const callData = data || callNotificationService.getPendingCallData()
+            const callData =
+              data || callNotificationService.getPendingCallData()
             if (callData) {
               callNotificationService.clearPendingCallData()
+
+              // Stop the background InCallManager ringtone — ringService will take over
+              try {
+                InCallManager.stopRingtone()
+              } catch (_) {}
 
               // Navigate to ChatScreen first so the socket connects and Agora can join
               navigationRef.current?.navigate('ChatScreen', {
@@ -157,6 +186,10 @@ export default function App() {
             }
           },
           onEndCall: () => {
+            // Stop background InCallManager ringtone too
+            try {
+              InCallManager.stopRingtone()
+            } catch (_) {}
             useCallStore.getState().rejectCall()
             callNotificationService.clearPendingCallData()
           },
@@ -169,16 +202,34 @@ export default function App() {
           const data = event.notification.additionalData as any
 
           if (data?.category === 'Call') {
-            // ✅ no event.preventDefault() here — that's only for foregroundWillDisplay
-            callNotificationService.displayIncomingCall(
-              data.callerName || 'Incoming Call',
-              data.callType || 'video',
-              {
-                conversationId: data.conversationId,
-                bookingId: data.bookingId,
-                fromUserId: data.fromUserId,
-              },
+            console.log(
+              '📱 OneSignal call notification clicked, opening full-screen call UI directly...',
             )
+            const conversationId = data.conversationId
+            const bookingId = data.bookingId
+            const fromUserId = data.fromUserId
+            const callType = data.callType || 'video'
+
+            if (conversationId && fromUserId) {
+              navigationRef.current?.navigate('ChatScreen', {
+                conversationId,
+                callType,
+                bookingId,
+                fromUserId,
+                isIncoming: true,
+              })
+
+              setTimeout(() => {
+                const callStoreState = useCallStore.getState()
+                if (callStoreState.status === 'idle') {
+                  callStoreState.handleIncomingCall({
+                    callType,
+                    conversationId,
+                    fromUserId,
+                  })
+                }
+              }, 300)
+            }
           } else if (data?.category === 'Message') {
             setTimeout(() => {
               navigationRef.current?.navigate('ChatScreen', {
@@ -202,17 +253,21 @@ export default function App() {
             const data = event.notification.additionalData as any
 
             if (data?.category === 'Call') {
-              event.preventDefault() // suppress OS banner
-
-              callNotificationService.displayIncomingCall(
-                data.callerName || 'Incoming Call',
-                data.callType || 'video',
-                {
-                  conversationId: data.conversationId,
-                  bookingId: data.bookingId,
-                  fromUserId: data.fromUserId,
-                },
+              event.preventDefault() // suppress OS notification banner completely
+              console.log(
+                '📱 OneSignal foreground call received, opening CallModal directly...',
               )
+
+              if (data.conversationId && data.fromUserId) {
+                const callStoreState = useCallStore.getState()
+                if (callStoreState.status === 'idle') {
+                  callStoreState.handleIncomingCall({
+                    callType: data.callType || 'video',
+                    conversationId: data.conversationId,
+                    fromUserId: data.fromUserId,
+                  })
+                }
+              }
             } else {
               event.notification.display()
             }

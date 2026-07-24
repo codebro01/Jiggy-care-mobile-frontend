@@ -73,7 +73,7 @@ export const CallModal = () => {
                         </View>
 
                         <Text style={styles.callTypeSubtitle}>
-                            INCOMING {callType?.toUpperCase() || 'AUDIO'} CALL
+                            OUTGOING {callType?.toUpperCase() || 'AUDIO'} CALL
                         </Text>
                         
                         <Text style={styles.callerName} numberOfLines={1}>

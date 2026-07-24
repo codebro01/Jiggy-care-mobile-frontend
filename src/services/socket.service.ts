@@ -286,12 +286,12 @@ class SocketService {
         this.socket?.emit('call:accept', payload);
     }
 
-    rejectCall(payload: { toUserId: string; reason?: string }) {
+    rejectCall(payload: { toUserId: string; conversationId?: string; reason?: string }) {
         console.log('[CALL_TRACE][Socket] 📤 Emitting call:reject with payload:', payload);
         this.socket?.emit('call:reject', payload);
     }
 
-    endCall(payload: { toUserId: string }) {
+    endCall(payload: { toUserId: string; conversationId?: string }) {
         console.log('[CALL_TRACE][Socket] 📤 Emitting call:end with payload:', payload);
         this.socket?.emit('call:end', payload);
     }
@@ -301,6 +301,7 @@ class SocketService {
     // Call Signaling Listeners
 
     onIncomingCall(callback: (payload: CallIncomingPayload) => void) {
+        this.socket?.off('call:incoming');
         this.socket?.on('call:incoming', callback);
     }
 
@@ -309,6 +310,7 @@ class SocketService {
     }
 
     onCallAccepted(callback: (payload: CallAcceptedPayload) => void) {
+        this.socket?.off('call:accepted');
         this.socket?.on('call:accepted', callback);
     }
 
@@ -317,6 +319,7 @@ class SocketService {
     }
 
     onCallRejected(callback: (payload: CallRejectedPayload) => void) {
+        this.socket?.off('call:rejected');
         this.socket?.on('call:rejected', callback);
     }
 
@@ -325,6 +328,7 @@ class SocketService {
     }
 
     onCallEnded(callback: (payload: CallEndedPayload) => void) {
+        this.socket?.off('call:ended');
         this.socket?.on('call:ended', callback);
     }
 
@@ -332,7 +336,17 @@ class SocketService {
         this.socket?.off('call:ended', callback);
     }
 
+    onCallCancelled(callback: (payload: { fromUserId?: string }) => void) {
+        this.socket?.off('call:cancelled');
+        this.socket?.on('call:cancelled', callback);
+    }
+
+    offCallCancelled(callback: (payload: any) => void) {
+        this.socket?.off('call:cancelled', callback);
+    }
+
     onCallRinging(callback: (payload: { toUserId: string; conversationId: string; callType: string }) => void) {
+        this.socket?.off('call:ringing');
         this.socket?.on('call:ringing', callback);
     }
 
@@ -341,6 +355,7 @@ class SocketService {
     }
 
     onCallStopRinging(callback: () => void) {
+        this.socket?.off('call:stop-ringing');
         this.socket?.on('call:stop-ringing', callback);
     }
 
@@ -349,6 +364,7 @@ class SocketService {
     }
 
     onCallNoAnswer(callback: (payload: { toUserId: string }) => void) {
+        this.socket?.off('call:no-answer');
         this.socket?.on('call:no-answer', callback);
     }
 
@@ -357,6 +373,7 @@ class SocketService {
     }
 
     onCallMissed(callback: (payload: { fromUserId: string; conversationId: string }) => void) {
+        this.socket?.off('call:missed');
         this.socket?.on('call:missed', callback);
     }
 

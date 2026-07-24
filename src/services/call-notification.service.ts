@@ -1,11 +1,12 @@
 import notifee, {
   AndroidImportance,
   AndroidCategory,
+  AndroidVisibility,
   EventType,
 } from '@notifee/react-native'
 import { AppState, Platform } from 'react-native'
 
-const CHANNEL_ID = 'jiggy_care_calls_v2' // bumped to force fresh channel with custom sound
+const CHANNEL_ID = 'jiggy_care_calls_v3' // bumped to force fresh channel with max priority & visibility
 
 class CallNotificationService {
   private pendingCallData: any = null
@@ -17,9 +18,14 @@ class CallNotificationService {
       name: 'Incoming Calls',
       importance: AndroidImportance.HIGH,
       vibration: true,
+      vibrationPattern: [300, 500, 300, 500],
       sound: 'incoming_call', // references android/app/src/main/res/raw/incoming_call.aac
+      lights: true,
+      lightColor: '#10B981',
+      bypassDnd: true,
+      visibility: AndroidVisibility.PUBLIC,
     })
-    console.log('✅ Notifee call channel created with custom ringtone')
+    console.log('✅ Notifee call channel created with max priority & public visibility')
   }
 
   async displayIncomingCall(
@@ -40,39 +46,45 @@ class CallNotificationService {
         channelId: CHANNEL_ID,
         category: AndroidCategory.CALL,
         importance: AndroidImportance.HIGH,
-        // This is what launches the app full-screen when device is locked/idle
+        visibility: AndroidVisibility.PUBLIC,
+        sound: 'incoming_call',
+        lightUpScreen: true,
+        // Full screen action wakes the screen and opens the app when device is locked/idle
         fullScreenAction: {
           id: 'default',
           launchActivity: 'default',
         },
         ongoing: true,
         autoCancel: false,
-        // Show a single "Open" action so user can get into app from shade
+        pressAction: {
+          id: 'default',
+          launchActivity: 'default',
+        },
         actions: [
           {
-            title: '📞 Open App',
-            pressAction: { id: 'default', launchActivity: 'default' },
+            title: '📞 Answer',
+            pressAction: { id: 'answer', launchActivity: 'default' },
           },
           {
             title: '❌ Decline',
             pressAction: { id: 'decline' },
           },
         ],
-        pressAction: {
-          id: 'default',
-          launchActivity: 'default',
-        },
       },
     })
 
     this.currentNotificationId = notificationId
     console.log(`📱 Displaying full-screen call notification for ${callerName}`)
+    // Note: ringtone is started by callStore.handleIncomingCall() in foreground,
+    // and by the Notifee channel sound in background/killed state.
     return notificationId
   }
 
   async cancelCallNotification() {
     await notifee.cancelNotification('incoming_call')
     this.currentNotificationId = null
+    // Note: ringtone is stopped by callStore.reset() — do not call ringService here
+    // because this method may be called from headless background context where expo-av is unavailable.
   }
 
   reportConnectedCall() {

@@ -128,19 +128,19 @@ export const useCallStore = create<CallState>()((set, get) => ({
   },
 
   rejectCall: () => {
-    const { otherUserId } = get()
+    const { otherUserId, conversationId } = get()
     console.log('[CALL_TRACE][Store] 🚫 Rejecting call...');
     if (otherUserId) {
-      socketService.rejectCall({ toUserId: otherUserId })
+      socketService.rejectCall({ toUserId: otherUserId, conversationId: conversationId || undefined })
     }
     get().reset()
   },
 
   endCall: () => {
     console.log('[CALL_TRACE][Store] 🔴 Ending call...');
-    const { otherUserId } = get()
+    const { otherUserId, conversationId } = get()
     if (otherUserId) {
-      socketService.endCall({ toUserId: otherUserId })
+      socketService.endCall({ toUserId: otherUserId, conversationId: conversationId || undefined })
     }
     get().reset()
   },
@@ -192,6 +192,10 @@ export const useCallStore = create<CallState>()((set, get) => ({
   },
 
   handleCallMissed: (payload) => {
+    if (get().status === 'idle') {
+      console.log('[CALL_TRACE][Store] ⚠️ Ignoring stale call:missed event (status is already idle)');
+      return;
+    }
     console.log('[CALL_TRACE][Store] 📵 Call missed from:', payload.fromUserId);
     get().reset()
   },
@@ -266,8 +270,15 @@ export const useCallStore = create<CallState>()((set, get) => ({
       setTimeout(() => get().reset(), 3000)
     }
 
-    const handleCallEnded = (payload: { fromUserId: string }) => {
-      console.log('[CALL_TRACE][Store] 🔴 Call ended by remote user:', payload.fromUserId);
+    const handleCallEnded = (payload?: { fromUserId?: string }) => {
+      const currentStatus = get().status;
+      if (currentStatus === 'idle') {
+        // Ignore stale call:ended events arriving when no call is active
+        console.log('[CALL_TRACE][Store] ⚠️ Ignoring stale call:ended event (status is already idle)');
+        return;
+      }
+      const endedUserId = payload?.fromUserId || get().otherUserId || 'remote user';
+      console.log('[CALL_TRACE][Store] 🔴 Call ended by:', endedUserId);
       get().reset()
     }
 
@@ -282,6 +293,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
     socketService.onCallAccepted(handleCallAccepted)
     socketService.onCallRejected(handleCallRejected)
     socketService.onCallEnded(handleCallEnded)
+    socketService.onCallCancelled(handleCallEnded)
     socketService.onCallMissed(get().handleCallMissed)
     socketService.onCallStopRinging(get().handleStopRinging)
 
@@ -325,8 +337,10 @@ export const useCallStore = create<CallState>()((set, get) => ({
       socketService.offCallAccepted(state.handleCallAcceptedRef)
     if (state.handleCallRejectedRef)
       socketService.offCallRejected(state.handleCallRejectedRef)
-    if (state.handleCallEndedRef)
+    if (state.handleCallEndedRef) {
       socketService.offCallEnded(state.handleCallEndedRef)
+      socketService.offCallCancelled(state.handleCallEndedRef)
+    }
     if (state.handleCallMissedRef)
       socketService.offCallMissed(state.handleCallMissedRef)
     if (state.handleStopRingingRef)
