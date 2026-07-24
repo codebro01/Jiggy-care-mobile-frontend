@@ -51,6 +51,15 @@
     },
     "plugins": [
       [
+        "expo-callkit-telecom",
+        {
+          "sounds": [
+            "./assets/incoming_call.aac"
+          ],
+          "defaultRingtoneAndroid": "incoming_call.aac"
+        }
+      ],
+      [
         "onesignal-expo-plugin",
         {
           "mode": "development"

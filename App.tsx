@@ -28,7 +28,15 @@ import { useCallStore } from '@/stores/callStore'
 import messaging from '@react-native-firebase/messaging'
 import { callNotificationService } from '@/services/call-notification.service'
 import { authService } from '@/services/auth.service'
-import InCallManager from 'react-native-incall-manager'
+import {
+  reportIncomingCall,
+  reportCallEnded,
+  getActiveCallSession,
+  registerVoIPPush,
+  addCallAnsweredListener,
+  addCallEndedListener,
+  fulfillIncomingCallConnected,
+} from 'expo-callkit-telecom'
 
 // Handles FCM when app is killed — must be outside any component
 messaging().setBackgroundMessageHandler(async (remoteMessage) => {
@@ -44,38 +52,33 @@ messaging().setBackgroundMessageHandler(async (remoteMessage) => {
     const authState = useAuthStore.getState()
     if (!authState.isAuthenticated) {
       try {
-        console.log(
-          'User is logged out. Attempting to refresh token for incoming call...',
-        )
+        console.log('User is logged out. Attempting to refresh token for incoming call...')
         await authService.refreshToken()
       } catch (err) {
         console.warn('Failed to refresh token in background:', err)
       }
     }
 
-    // Show the Notifee full-screen / heads-up notification
-    await callNotificationService.setup()
-
-    const callType = data.callType === 'audio' ? 'audio' : 'video'
-
-    await callNotificationService.displayIncomingCall(
-      (data.callerName as string) || 'Incoming Call',
-      callType,
-      {
-        conversationId: data.conversationId,
-        bookingId: data.bookingId,
-        fromUserId: data.callerUserId,
-      },
-    )
-
-    // Start looping ringtone via InCallManager.
-    // '_BUNDLE_' maps to res/raw/incallmanager_ringtone.aac (our custom sound).
-    // InCallManager is a native Android AudioManager module — works in headless JS.
+    // Report incoming call natively via expo-callkit-telecom
     try {
-      InCallManager.startRingtone('_BUNDLE_')
-      console.log('🔔 InCallManager ringtone started in background (incallmanager_ringtone.aac)')
+      await reportIncomingCall({
+        eventId: data.conversationId || 'incoming-call-' + Date.now(),
+        serverCallId: data.conversationId,
+        hasVideo: callType === 'video',
+        caller: {
+          id: data.callerUserId,
+          displayName: data.callerName || 'Patient',
+        },
+        metadata: {
+          conversationId: data.conversationId,
+          bookingId: data.bookingId,
+          fromUserId: data.callerUserId,
+          callType: callType,
+        }
+      })
+      console.log('📞 expo-callkit-telecom: Incoming call reported successfully in background')
     } catch (err) {
-      console.warn('InCallManager.startRingtone failed in background:', err)
+      console.error('📞 expo-callkit-telecom: Failed to report incoming call:', err)
     }
   }
 
@@ -83,13 +86,15 @@ messaging().setBackgroundMessageHandler(async (remoteMessage) => {
   const reason = data?.reason
   if (type === 'call_ended' || type === 'call_cancelled' || reason === 'cancelled' || reason === 'ended') {
     console.log(
-      '📵 Call ended/cancelled in background — dismissing notification & stopping ringtone',
+      '📵 Call ended/cancelled in background — ending session in expo-callkit-telecom',
     )
-    await callNotificationService.cancelCallNotification()
     try {
-      InCallManager.stopRingtone()
+      const session = await getActiveCallSession()
+      if (session) {
+        await reportCallEnded(session.id, 'remoteEnded')
+      }
     } catch (err) {
-      console.warn('InCallManager.stopRingtone failed:', err)
+      console.warn('Failed to end call session in background:', err)
     }
   }
 })
@@ -143,56 +148,63 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    let subAnswered: any = null
+    let subEnded: any = null
+
     async function prepare() {
       try {
         console.log('1. Starting prepare...')
 
-        await callNotificationService.setup()
+        try {
+          registerVoIPPush()
+          console.log('📞 expo-callkit-telecom: VoIP Push registered')
+        } catch (err) {
+          console.warn('Failed to register VoIP push:', err)
+        }
 
-        callNotificationService.registerListeners({
-          onAnswerCall: (data?: any) => {
-            // Use data from the notification if available, otherwise fall back to pendingCallData
-            const callData =
-              data || callNotificationService.getPendingCallData()
-            if (callData) {
-              callNotificationService.clearPendingCallData()
-
-              // Stop the background InCallManager ringtone — ringService will take over
-              try {
-                InCallManager.stopRingtone()
-              } catch (_) {}
-
+        subAnswered = addCallAnsweredListener(async (event) => {
+          console.log('📞 expo-callkit-telecom: Native call answered, event:', event)
+          try {
+            const session = await getActiveCallSession()
+            const metadata = session?.incomingCallEvent?.metadata as any
+            if (metadata) {
               // Navigate to ChatScreen first so the socket connects and Agora can join
               navigationRef.current?.navigate('ChatScreen', {
-                conversationId: callData.conversationId,
-                callType: callData.callType,
-                bookingId: callData.bookingId,
-                fromUserId: callData.fromUserId,
+                conversationId: metadata.conversationId,
+                callType: metadata.callType,
+                bookingId: metadata.bookingId,
+                fromUserId: metadata.fromUserId,
                 isIncoming: true,
               })
 
               // Immediately trigger the full-screen CallModal via the store
               // so the user sees the incoming call UI straight away
-              setTimeout(() => {
+              setTimeout(async () => {
                 const callStoreState = useCallStore.getState()
                 if (callStoreState.status === 'idle') {
                   callStoreState.handleIncomingCall({
-                    callType: callData.callType || 'audio',
-                    conversationId: callData.conversationId,
-                    fromUserId: callData.fromUserId,
+                    callType: metadata.callType || 'audio',
+                    conversationId: metadata.conversationId,
+                    fromUserId: metadata.fromUserId,
                   })
                 }
-              }, 500) // brief delay lets navigation settle
+                await callStoreState.acceptCall()
+              }, 300)
             }
-          },
-          onEndCall: () => {
-            // Stop background InCallManager ringtone too
-            try {
-              InCallManager.stopRingtone()
-            } catch (_) {}
-            useCallStore.getState().rejectCall()
-            callNotificationService.clearPendingCallData()
-          },
+
+            // Confirm connection to the OS
+            await fulfillIncomingCallConnected(event.requestId)
+          } catch (err) {
+            console.error('Failed to handle native call answer:', err)
+          }
+        })
+
+        subEnded = addCallEndedListener(async (event) => {
+          console.log('📞 expo-callkit-telecom: Native call ended/declined, event:', event)
+          const callStoreState = useCallStore.getState()
+          if (callStoreState.status !== 'idle') {
+            callStoreState.rejectCall()
+          }
         })
 
         initializeOneSignal()
@@ -292,6 +304,10 @@ export default function App() {
     }
 
     prepare()
+    return () => {
+      if (subAnswered) subAnswered.remove()
+      if (subEnded) subEnded.remove()
+    }
   }, [])
 
   const onLayoutRootView = useCallback(async () => {

@@ -2,10 +2,17 @@ import { create } from 'zustand'
 import { socketService } from '@/services/socket.service'
 import { agoraService } from '@/services/agora.service'
 import { ringService } from '@/services/ring.service'
-import { callNotificationService } from '@/services/call-notification.service'
 import { CallIncomingPayload, CallType } from '@/types'
 import InCallManager from 'react-native-incall-manager'
 import { useAppointmentsStore } from './appointmentsStore'
+import {
+  startOutgoingCall,
+  reportOutgoingCallConnected,
+  endCall,
+  reportCallEnded,
+  getActiveCallSession,
+  reportIncomingCall,
+} from 'expo-callkit-telecom'
 
 type CallStatus =
   | 'idle'
@@ -74,6 +81,17 @@ export const useCallStore = create<CallState>()((set, get) => ({
   initiateCall: async (toUserId, conversationId, type, otherUserName) => {
     try {
       console.log('[CALL_TRACE][Store] 🚀 Initiating call:', { toUserId, conversationId, type });
+      
+      // Start outgoing call session natively in Telecom/CallKit
+      try {
+        await startOutgoingCall(
+          { id: toUserId, displayName: otherUserName || 'Patient' },
+          { hasVideo: type === 'video' }
+        )
+      } catch (err) {
+        console.warn('Failed to start outgoing call natively:', err)
+      }
+
       set({
         status: 'calling',
         callType: type,
@@ -110,7 +128,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
     try {
       console.log('[CALL_TRACE][Store] 📞 Accepting call from:', otherUserId);
       ringService.stopRingtone()
-      callNotificationService.reportConnectedCall()
+      agoraService.startLocalPreview()
       
       set({ status: 'connected', error: null })
 
@@ -133,6 +151,12 @@ export const useCallStore = create<CallState>()((set, get) => ({
     if (otherUserId) {
       socketService.rejectCall({ toUserId: otherUserId, conversationId: conversationId || undefined })
     }
+    // End native Telecom/CallKit session
+    getActiveCallSession().then((session) => {
+      if (session) {
+        endCall(session.id).catch((err) => console.warn('Failed to end native session:', err))
+      }
+    })
     get().reset()
   },
 
@@ -142,6 +166,12 @@ export const useCallStore = create<CallState>()((set, get) => ({
     if (otherUserId) {
       socketService.endCall({ toUserId: otherUserId, conversationId: conversationId || undefined })
     }
+    // End native Telecom/CallKit session
+    getActiveCallSession().then((session) => {
+      if (session) {
+        endCall(session.id).catch((err) => console.warn('Failed to end native session:', err))
+      }
+    })
     get().reset()
   },
 
@@ -160,10 +190,20 @@ export const useCallStore = create<CallState>()((set, get) => ({
     const name = appointment ? appointment.patientName : 'Unknown'
 
     // Show native call screen
-    callNotificationService.displayIncomingCall(name, payload.callType, {
-      conversationId: payload.conversationId,
-      fromUserId: payload.fromUserId,
-    })
+    reportIncomingCall({
+      eventId: payload.conversationId || 'incoming-call-' + Date.now(),
+      serverCallId: payload.conversationId,
+      hasVideo: payload.callType === 'video',
+      caller: {
+        id: payload.fromUserId,
+        displayName: name,
+      },
+      metadata: {
+        conversationId: payload.conversationId,
+        fromUserId: payload.fromUserId,
+        callType: payload.callType,
+      }
+    }).catch(err => console.error('📞 expo-callkit-telecom: Failed to report incoming call from WS:', err))
 
     set({
       status: 'incoming',
@@ -187,8 +227,6 @@ export const useCallStore = create<CallState>()((set, get) => ({
     console.log('[CALL_TRACE][Store] 🔕 Stop ringing');
     ringService.stopRingtone()
     ringService.stopRingback()
-    InCallManager.stopRingtone()
-    InCallManager.stopRingback()
   },
 
   handleCallMissed: (payload) => {
@@ -259,6 +297,13 @@ export const useCallStore = create<CallState>()((set, get) => ({
       InCallManager.stopRingback()
       ringService.stopRingback()
       set({ status: 'connected', error: null })
+      
+      // Notify Telecom/CallKit that outgoing call media is connected
+      getActiveCallSession().then((session) => {
+        if (session) {
+          reportOutgoingCallConnected(session.id).catch((err) => console.warn('Failed to report outgoing connected:', err))
+        }
+      })
     }
 
     const handleCallRejected = (payload: {
@@ -267,6 +312,14 @@ export const useCallStore = create<CallState>()((set, get) => ({
     }) => {
       console.log('[CALL_TRACE][Store] 🔴 Call rejected by remote user:', payload.fromUserId, payload.reason || '');
       set({ error: payload.reason || 'Call rejected' })
+
+      // Report ended to native Telecom/CallKit
+      getActiveCallSession().then((session) => {
+        if (session) {
+          reportCallEnded(session.id, 'declinedElsewhere').catch((err) => console.warn('Failed to report native call ended:', err))
+        }
+      })
+
       setTimeout(() => get().reset(), 3000)
     }
 
@@ -279,6 +332,14 @@ export const useCallStore = create<CallState>()((set, get) => ({
       }
       const endedUserId = payload?.fromUserId || get().otherUserId || 'remote user';
       console.log('[CALL_TRACE][Store] 🔴 Call ended by:', endedUserId);
+
+      // Report ended to native Telecom/CallKit
+      getActiveCallSession().then((session) => {
+        if (session) {
+          reportCallEnded(session.id, 'remoteEnded').catch((err) => console.warn('Failed to report native call ended:', err))
+        }
+      })
+
       get().reset()
     }
 
@@ -302,7 +363,6 @@ export const useCallStore = create<CallState>()((set, get) => ({
 
   reset: () => {
     console.log('[CALL_TRACE][Store] 🔄 Resetting call state');
-    callNotificationService.reportEndCall()
     InCallManager.stopRingback()
     InCallManager.stopRingtone()
     ringService.cleanup()
