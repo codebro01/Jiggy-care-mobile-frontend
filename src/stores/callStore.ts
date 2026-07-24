@@ -216,7 +216,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
   handleRinging: () => {
     console.log('[CALL_TRACE][Store] 🔔 Call is ringing on the other side');
     if (get().status === 'calling') {
-      InCallManager.startRingback('_BUNDLE_')
+      InCallManager.startRingback('_DEFAULT_')
       set({ status: 'ringing' })
     }
   },

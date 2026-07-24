@@ -148,6 +148,12 @@ class AgoraService {
         if (this.engine) {
             console.log(`[CALL_TRACE][Agora] 🔊 Toggling Speakerphone: ${enabled ? 'ON' : 'OFF'}`);
             this.engine.setEnableSpeakerphone(enabled);
+            try {
+                const { setAudioSessionPortOverride } = require('expo-callkit-telecom');
+                setAudioSessionPortOverride(enabled);
+            } catch (e) {
+                console.warn('Failed to set CallKit speaker override', e);
+            }
             InCallManager.setForceSpeakerphoneOn(enabled);
         }
     }
