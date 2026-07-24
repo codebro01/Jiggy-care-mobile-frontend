@@ -127,7 +127,6 @@ export const useCallStore = create<CallState>()((set, get) => ({
     try {
       console.log('[CALL_TRACE][Store] 📞 Accepting call from:', otherUserId);
       InCallManager.stopRingtone()
-      agoraService.startLocalPreview()
       
       set({ status: 'connected', error: null })
 

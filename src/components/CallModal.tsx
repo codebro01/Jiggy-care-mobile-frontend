@@ -28,7 +28,7 @@ export const CallModal = () => {
         switchCamera
     } = useCallStore();
 
-    const isVisible = status !== 'idle';
+    const isVisible = status !== 'idle' && status !== 'incoming';
     const isIncoming = status === 'incoming';
     const isConnected = status === 'connected';
     const displayName = otherUserName || 'Patient';
