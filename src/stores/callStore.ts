@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { socketService } from '@/services/socket.service'
 import { agoraService } from '@/services/agora.service'
-import { ringService } from '@/services/ring.service'
 import { CallIncomingPayload, CallType } from '@/types'
 import InCallManager from 'react-native-incall-manager'
 import { useAppointmentsStore } from './appointmentsStore'
@@ -127,7 +126,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
 
     try {
       console.log('[CALL_TRACE][Store] 📞 Accepting call from:', otherUserId);
-      ringService.stopRingtone()
+      InCallManager.stopRingtone()
       agoraService.startLocalPreview()
       
       set({ status: 'connected', error: null })
@@ -177,7 +176,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
 
   handleIncomingCall: (payload) => {
     console.log('[CALL_TRACE][Store] 📞 Incoming call received:', payload);
-    ringService.startRingtone()
+    // InCallManager.startRingtone('_BUNDLE_') // Handled by native CallKit now
 
     // Try to find the name from the appointments store
     const appointments = useAppointmentsStore.getState().appointments
@@ -218,15 +217,15 @@ export const useCallStore = create<CallState>()((set, get) => ({
   handleRinging: () => {
     console.log('[CALL_TRACE][Store] 🔔 Call is ringing on the other side');
     if (get().status === 'calling') {
-      ringService.startRingback()
+      InCallManager.startRingback('_BUNDLE_')
       set({ status: 'ringing' })
     }
   },
 
   handleStopRinging: () => {
     console.log('[CALL_TRACE][Store] 🔕 Stop ringing');
-    ringService.stopRingtone()
-    ringService.stopRingback()
+    InCallManager.stopRingtone()
+    InCallManager.stopRingback()
   },
 
   handleCallMissed: (payload) => {
@@ -295,7 +294,6 @@ export const useCallStore = create<CallState>()((set, get) => ({
     const handleCallAccepted = (payload: { fromUserId: string }) => {
       console.log('[CALL_TRACE][Store] ✅ Call accepted by remote user:', payload.fromUserId);
       InCallManager.stopRingback()
-      ringService.stopRingback()
       set({ status: 'connected', error: null })
       
       // Notify Telecom/CallKit that outgoing call media is connected
@@ -365,7 +363,6 @@ export const useCallStore = create<CallState>()((set, get) => ({
     console.log('[CALL_TRACE][Store] 🔄 Resetting call state');
     InCallManager.stopRingback()
     InCallManager.stopRingtone()
-    ringService.cleanup()
     InCallManager.stop()
     
     agoraService.leaveChannel()
