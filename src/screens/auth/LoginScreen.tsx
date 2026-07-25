@@ -165,6 +165,8 @@ const { signIn } = useGoogleAuth();
       const oneSignal = loginOneSignalUser(response.data.id)
       console.log("onesignal",oneSignal)
 
+      await registerFcmToken()
+
       setLoading(false)
       showSuccess('Login successful', 'Success');
 

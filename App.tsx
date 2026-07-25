@@ -66,7 +66,7 @@ messaging().setBackgroundMessageHandler(async (remoteMessage) => {
       await reportIncomingCall({
         eventId: data.conversationId || 'incoming-call-' + Date.now(),
         serverCallId: data.conversationId,
-        hasVideo: callType === 'video',
+        hasVideo: data.callType === 'video',
         caller: {
           id: data.callerUserId,
           displayName: data.callerName || 'Patient',
@@ -75,7 +75,7 @@ messaging().setBackgroundMessageHandler(async (remoteMessage) => {
           conversationId: data.conversationId,
           bookingId: data.bookingId,
           fromUserId: data.callerUserId,
-          callType: callType,
+          callType: data.callType || 'video',
         }
       })
       console.log('📞 expo-callkit-telecom: Incoming call reported successfully in background')
