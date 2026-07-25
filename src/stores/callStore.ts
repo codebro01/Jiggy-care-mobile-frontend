@@ -206,21 +206,29 @@ export const useCallStore = create<CallState>()((set, get) => ({
 
     const name = appointment ? appointment.patientName : 'Unknown'
 
-    // Show native call screen
-    reportIncomingCall({
-      eventId: payload.conversationId || 'incoming-call-' + Date.now(),
-      serverCallId: payload.conversationId,
-      hasVideo: payload.callType === 'video',
-      caller: {
-        id: payload.fromUserId,
-        displayName: name,
-      },
-      metadata: {
-        conversationId: payload.conversationId,
-        fromUserId: payload.fromUserId,
-        callType: payload.callType,
+    // Only create a native CallKit session if one doesn't already exist.
+    // When the app is in the background, the FCM handler already calls reportIncomingCall,
+    // so calling it again from the WebSocket event would throw "A call session already exists".
+    getActiveCallSession().then((session) => {
+      if (!session) {
+        reportIncomingCall({
+          eventId: payload.conversationId || 'incoming-call-' + Date.now(),
+          serverCallId: payload.conversationId,
+          hasVideo: payload.callType === 'video',
+          caller: {
+            id: payload.fromUserId,
+            displayName: name,
+          },
+          metadata: {
+            conversationId: payload.conversationId,
+            fromUserId: payload.fromUserId,
+            callType: payload.callType,
+          }
+        }).catch(err => console.error('📞 expo-callkit-telecom: Failed to report incoming call from WS:', err))
+      } else {
+        console.log('📞 expo-callkit-telecom: Native session already exists (FCM path), skipping duplicate reportIncomingCall from WS')
       }
-    }).catch(err => console.error('📞 expo-callkit-telecom: Failed to report incoming call from WS:', err))
+    })
 
     set({
       status: 'incoming',
