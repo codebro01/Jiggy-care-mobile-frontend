@@ -27,7 +27,6 @@ import { useAuthStore } from './src/stores/authStore'
 import { useCallStore } from '@/stores/callStore'
 import { useChatStore } from '@/stores/chatStore'
 import messaging from '@react-native-firebase/messaging'
-import { callNotificationService } from '@/services/call-notification.service'
 import { authService } from '@/services/auth.service'
 import {
   reportIncomingCall,
@@ -175,13 +174,6 @@ export default function App() {
           console.warn('Failed to cleanup stale call session:', e)
         }
 
-        // Clean up stale Notifee notifications from previous versions
-        try {
-          const notifee = require('@notifee/react-native').default
-          await notifee.cancelAllNotifications()
-        } catch (e) {
-          // ignore
-        }
 
         subAnswered = addCallAnsweredListener(async (event) => {
           console.log('📞 expo-callkit-telecom: Native call answered, event:', event)
