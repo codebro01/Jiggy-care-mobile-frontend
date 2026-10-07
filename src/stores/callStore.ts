@@ -3,6 +3,7 @@ import { socketService } from '@/services/socket.service'
 import { agoraService } from '@/services/agora.service'
 import { CallIncomingPayload, CallType } from '@/types'
 import InCallManager from 'react-native-incall-manager'
+import { Audio } from 'expo-av'
 import { useAppointmentsStore } from './appointmentsStore'
 import {
   startOutgoingCall,
@@ -243,14 +244,15 @@ export const useCallStore = create<CallState>()((set, get) => ({
   handleRinging: () => {
     console.log('[CALL_TRACE][Store] 🔔 Call is ringing on the other side');
     if (get().status === 'calling') {
-      InCallManager.startRingback('_BUNDLE_') // plays incallmanager_ringback.aac
+      // InCallManager plays within the telecom audio session
+      // incallmanager_ringback.aac is our custom ringing_sound.aac
+      InCallManager.startRingback('_BUNDLE_')
       set({ status: 'ringing' })
     }
   },
 
   handleStopRinging: () => {
     console.log('[CALL_TRACE][Store] 🔕 Stop ringing');
-    InCallManager.stopRingtone()
     InCallManager.stopRingback()
   },
 
@@ -265,6 +267,7 @@ export const useCallStore = create<CallState>()((set, get) => ({
 
   handleNoAnswer: () => {
     console.log('[CALL_TRACE][Store] 📵 No answer');
+    InCallManager.stopRingback()
     set({ error: 'No answer' })
     setTimeout(() => get().reset(), 3000)
   },
@@ -373,6 +376,9 @@ export const useCallStore = create<CallState>()((set, get) => ({
     state.handleCallEndedRef = handleCallEnded
     state.handleCallMissedRef = get().handleCallMissed
     state.handleStopRingingRef = get().handleStopRinging
+    state.handleIncomingCallRef = get().handleIncomingCall
+    state.handleRingingRef = get().handleRinging
+    state.handleNoAnswerRef = get().handleNoAnswer
 
     // Register event listeners
     socketService.onCallAccepted(handleCallAccepted)
@@ -381,11 +387,16 @@ export const useCallStore = create<CallState>()((set, get) => ({
     socketService.onCallCancelled(handleCallEnded)
     socketService.onCallMissed(get().handleCallMissed)
     socketService.onCallStopRinging(get().handleStopRinging)
+    
+    // Global incoming call listeners
+    socketService.onIncomingCall(get().handleIncomingCall)
+    socketService.onCallRinging(get().handleRinging)
+    socketService.onCallNoAnswer(get().handleNoAnswer)
 
     console.log('[CALL_TRACE][Store] ✅ Call event listeners initialized');
   },
 
-  reset: () => {
+  reset: async () => {
     console.log('[CALL_TRACE][Store] 🔄 Resetting call state');
     InCallManager.stopRingback()
     InCallManager.stopRingtone()
@@ -428,6 +439,12 @@ export const useCallStore = create<CallState>()((set, get) => ({
       socketService.offCallMissed(state.handleCallMissedRef)
     if (state.handleStopRingingRef)
       socketService.offCallStopRinging(state.handleStopRingingRef)
+    if (state.handleIncomingCallRef)
+      socketService.offIncomingCall(state.handleIncomingCallRef)
+    if (state.handleRingingRef)
+      socketService.offCallRinging(state.handleRingingRef)
+    if (state.handleNoAnswerRef)
+      socketService.offCallNoAnswer(state.handleNoAnswerRef)
 
     set({
       status: 'idle',

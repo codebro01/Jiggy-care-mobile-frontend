@@ -437,22 +437,7 @@ export function ChatScreen({ navigation, route }: Props) {
     });
   };
 
-  const { initiateCall, handleIncomingCall, handleRinging, handleStopRinging, handleNoAnswer, handleCallMissed } = useCallStore();
-
-  useEffect(() => {
-    socketService.onIncomingCall(handleIncomingCall);
-    socketService.onCallRinging(handleRinging);
-    socketService.onCallStopRinging(handleStopRinging);
-    socketService.onCallNoAnswer(handleNoAnswer);
-    socketService.onCallMissed(handleCallMissed);
-    return () => {
-      socketService.offIncomingCall(handleIncomingCall);
-      socketService.offCallRinging(handleRinging);
-      socketService.offCallStopRinging(handleStopRinging);
-      socketService.offCallNoAnswer(handleNoAnswer);
-      socketService.offCallMissed(handleCallMissed);
-    };
-  }, []);
+  const { initiateCall } = useCallStore();
 
   const handleVideoCall = () => {
     if (!currentConversation || !user || !appointment) return;

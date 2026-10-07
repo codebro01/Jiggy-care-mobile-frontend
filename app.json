@@ -54,9 +54,10 @@
         "expo-callkit-telecom",
         {
           "sounds": [
-            "./assets/incoming_call.aac"
+            "./assets/incoming_call.aac",
+            "./assets/ringing_sound.aac"
           ],
-          "defaultRingtoneAndroid": "incoming_call.aac"
+          "defaultRingtoneAndroid": "default"
         }
       ],
       [

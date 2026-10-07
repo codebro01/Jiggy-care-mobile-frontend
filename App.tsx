@@ -53,31 +53,38 @@ messaging().setBackgroundMessageHandler(async (remoteMessage) => {
     const authState = useAuthStore.getState()
     if (!authState.isAuthenticated) {
       try {
-        console.log('User is logged out. Attempting to refresh token for incoming call...')
+        console.log('User is logged out/inactive. Attempting to refresh token for incoming call...')
         await authService.refreshToken()
+        useAuthStore.setState({ isAuthenticated: true })
+        console.log('Successfully refreshed session in background!')
       } catch (err) {
-        console.warn('Failed to refresh token in background:', err)
+        console.warn('Failed to refresh token in background, call might fail to connect:', err)
       }
     }
 
     // Report incoming call natively via expo-callkit-telecom
     try {
-      await reportIncomingCall({
-        eventId: data.conversationId || 'incoming-call-' + Date.now(),
-        serverCallId: data.conversationId,
-        hasVideo: data.callType === 'video',
-        caller: {
-          id: data.callerUserId,
-          displayName: data.callerName || 'Patient',
-        },
-        metadata: {
-          conversationId: data.conversationId,
-          bookingId: data.bookingId,
-          fromUserId: data.callerUserId,
-          callType: data.callType || 'video',
-        }
-      })
-      console.log('📞 expo-callkit-telecom: Incoming call reported successfully in background')
+      const existingSession = await getActiveCallSession()
+      if (!existingSession) {
+        await reportIncomingCall({
+          eventId: data.conversationId || 'incoming-call-' + Date.now(),
+          serverCallId: data.conversationId,
+          hasVideo: data.callType === 'video',
+          caller: {
+            id: data.callerUserId,
+            displayName: data.callerName || 'Patient',
+          },
+          metadata: {
+            conversationId: data.conversationId,
+            bookingId: data.bookingId,
+            fromUserId: data.callerUserId,
+            callType: data.callType || 'video',
+          }
+        })
+        console.log('📞 expo-callkit-telecom: Incoming call reported successfully in background')
+      } else {
+        console.log('📞 expo-callkit-telecom: Native session already exists, skipping reportIncomingCall in background')
+      }
     } catch (err) {
       console.error('📞 expo-callkit-telecom: Failed to report incoming call:', err)
     }
@@ -108,6 +115,23 @@ SplashScreen.preventAutoHideAsync()
 
 function AppContent() {
   const { theme } = useTheme()
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated)
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Connect socket globally so incoming calls can be received anywhere
+      const chatStore = useChatStore.getState()
+      if (!chatStore.isSocketConnected) {
+        chatStore.connectSocket().catch(e => console.warn('Failed to connect global socket:', e))
+      }
+      
+      // Initialize call listeners globally
+      useCallStore.getState().initialize()
+    } else {
+      useChatStore.getState().disconnectSocket()
+      useCallStore.getState().cleanup()
+    }
+  }, [isAuthenticated])
 
   return (
     <>
@@ -217,7 +241,7 @@ export default function App() {
           }
         })
 
-        initializeOneSignal()
+        const oneSignalReady = initializeOneSignal()
         console.log('2. OneSignal done...')
 
         OneSignal.Notifications.addEventListener('click', (event: any) => {
