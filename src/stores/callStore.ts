@@ -79,6 +79,11 @@ export const useCallStore = create<CallState>()((set, get) => ({
   error: null,
   
   initiateCall: async (toUserId, conversationId, type, otherUserName) => {
+    if (get().status !== 'idle') {
+      console.log('[CALL_TRACE][Store] ⚠️ Call already in progress, ignoring duplicate initiateCall');
+      return;
+    }
+    
     try {
       console.log('[CALL_TRACE][Store] 🚀 Initiating call:', { toUserId, conversationId, type });
       
