@@ -22,6 +22,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ThemeProvider, useTheme } from './src/theme'
 import { RootStackParamList } from './src/navigation'
 import { AppNavigator } from './src/navigation'
+import { CallModal } from '@/components/CallModal'
 import { OneSignal } from 'react-native-onesignal'
 import { useAuthStore } from './src/stores/authStore'
 import { useCallStore } from '@/stores/callStore'
@@ -137,6 +138,7 @@ function AppContent() {
     <>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       <AppNavigator />
+      <CallModal />
     </>
   )
 }

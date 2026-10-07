@@ -47,7 +47,6 @@ import { Message, Appointment } from '../../types';
 import { chatService } from '@/services/chat.service';
 import { socketService } from '@/services/socket.service';
 import { useAuthStore } from '@/stores/authStore';
-import { CallModal } from '@/components/CallModal';
 import { useCallStore } from '@/stores/callStore';
 import { useAppointmentsStore } from '@/stores/appointmentsStore';
 import * as DocumentPicker from 'expo-document-picker';
@@ -894,7 +893,6 @@ export function ChatScreen({ navigation, route }: Props) {
         visible={alert.visible}
         onClose={hideAlert}
       />
-      <CallModal />
     </SafeAreaView>
   );
 }
