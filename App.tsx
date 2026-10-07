@@ -187,16 +187,7 @@ export default function App() {
           console.warn('Failed to register VoIP push:', err)
         }
 
-        // Clean up stale native call sessions caused by hot-reloads
-        try {
-          const session = await getActiveCallSession()
-          if (session && useCallStore.getState().status === 'idle') {
-            console.log('🧹 Cleaning up stale native call session on boot:', session.id)
-            await endCall(session.id)
-          }
-        } catch (e) {
-          console.warn('Failed to cleanup stale call session:', e)
-        }
+        // Stale call cleanup removed: it was mistakenly ending fresh incoming calls on cold boot.
 
 
         subAnswered = addCallAnsweredListener(async (event) => {
