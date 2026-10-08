@@ -80,13 +80,13 @@ apiClient.interceptors.request.use(
 
 // Response interceptor - Handle token refresh
 apiClient.interceptors.response.use(
-    (response: AxiosResponse) => {
+    async (response: AxiosResponse) => {
         // Check if response contains new tokens and save them
         const accessToken = response.headers['x-access-token'];
         const refreshToken = response.headers['x-refresh-token'];
 
         if (accessToken && refreshToken) {
-            tokenManager.setTokens(accessToken, refreshToken);
+            await tokenManager.setTokens(accessToken, refreshToken); // ✅ awaited so tokens are in AsyncStorage before registerFcmToken reads them
         }
 
         console.log(accessToken, refreshToken)
