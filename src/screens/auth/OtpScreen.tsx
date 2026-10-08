@@ -22,6 +22,7 @@ import { Alert, useAlert } from '@/components/alert';
 import { authService } from '@/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
 import { loginOneSignalUser } from '@/services/oneSignal.service';
+import { registerFcmToken } from '@/services/fcm.service';
 
 type OTPVerificationScreenNavigationProp = NativeStackNavigationProp<
     AuthStackParamList,
@@ -117,7 +118,8 @@ const {setUser} = useAuthStore()
             setUser(response.data);
 
             loginOneSignalUser(response.data.id)
-           
+            
+            await registerFcmToken()
         } catch (error: any) {
             showError(
                 error.message || 'Invalid OTP. Please try again.',
